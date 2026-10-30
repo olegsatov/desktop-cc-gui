@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import type { ComposerInputHandle } from "@/components/application/ai-chat/ai-chat-composer";
+import type { ComposerSendGesture } from "@/components/application/ai-chat/composer-editable";
 import { mentionToken } from "@/components/application/ai-chat/file-tags";
 import { pickFiles } from "@/lib/platform";
 import { useChatStore, sessionKey as toSessionKey, type ActiveSession } from "../store";
@@ -42,6 +43,8 @@ export function useComposerActions({
     clearPendingMention,
     send,
     queueMessage,
+    sendNow,
+    steerMessage,
     interrupt,
     startNewChat,
     compactContext,
@@ -52,6 +55,8 @@ export function useComposerActions({
       clearPendingMention: s.clearPendingMention,
       send: s.send,
       queueMessage: s.queueMessage,
+      sendNow: s.sendNow,
+      steerMessage: s.steerMessage,
       interrupt: s.interrupt,
       startNewChat: s.startNewChat,
       compactContext: s.compactContext,
@@ -59,8 +64,16 @@ export function useComposerActions({
     })),
   );
 
+  // ⌃ can only steer an engine that keeps a mid-turn channel open, and only
+  // once the run has a native session id to write to (a brand-new chat has
+  // none until the engine announces it). Everything else falls back to "send
+  // now": both gestures mean "do not wait behind the running turn".
+  const steerable =
+    Boolean(active?.sessionId) &&
+    engines.some((e) => e.id === active?.engine && e.supportsSteer === true);
+
   const submit = useCallback(
-    (value: string) => {
+    (value: string, gesture: ComposerSendGesture = "queue") => {
       if (!active || (!value.trim() && images.length === 0)) return;
       // App commands resolve BEFORE the draft is cleared: a computer-use
       // send this session cannot honor leaves the user's text and
@@ -118,15 +131,29 @@ export function useComposerActions({
         useMcpPanel.getState().openPanel();
         return;
       }
-      // A turn is in flight: park the message in the session's queue; the
-      // store drains it FIFO when the turn ends.
+      // A turn is in flight. Plain Enter parks the message in the session's
+      // queue; the store drains it FIFO when the turn ends.
       if (streaming) {
+        if (gesture === "now") {
+          void sendNow(value, images, undefined, active);
+          return;
+        }
+        if (gesture === "steer") {
+          if (steerable) {
+            void steerMessage(value, images, active);
+            return;
+          }
+          // No mid-turn channel: keep the promise of the keypress ("do not
+          // wait behind this turn") and send it now instead of queueing.
+          void sendNow(value, images, undefined, active);
+          return;
+        }
         queueMessage(value, images, undefined, active);
         return;
       }
       void send(value, images, undefined, active);
     },
-    [active, images, streaming, sessionKey, setDraft, clearImages, send, queueMessage, startNewChat, compactContext, engines, setSessionError, t],
+    [active, images, streaming, steerable, sessionKey, setDraft, clearImages, send, queueMessage, sendNow, steerMessage, startNewChat, compactContext, engines, setSessionError, t],
   );
 
   // 文件树「+」的 pendingMention 是全局信号：分屏时只有当前聚焦那一栏（就是

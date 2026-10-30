@@ -1912,6 +1912,8 @@ export const en: Messages = {
       openSettings: "Customize shortcuts",
       sendMessage: "Send message",
       insertNewline: "Insert newline",
+      sendNow: "Send now (do not wait for the running turn)",
+      steer: "Steer the running turn (pi)",
       composerGroup: "Composer",
     },
   },

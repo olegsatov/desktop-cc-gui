@@ -309,6 +309,10 @@ export interface EngineInfo {
    *  session still gets MEMORY/USER injected, but the prompt omits the
    *  记忆使用说明 (it would instruct a tool that does not exist). */
   supportsMemory?: boolean;
+  /** Whether a turn that is already streaming accepts a mid-turn message
+   *  (pi's rpc stdin). False means the composer's steer gesture has to fall
+   *  back to stopping the turn and sending the text as the next one. */
+  supportsSteer?: boolean;
   /** Permission modes the engine honors at spawn ("auto" | "manual" |
    * "plan" | "bypass"); the composer picker greys out the rest. */
   permissions: string[];
@@ -1546,6 +1550,21 @@ export const ipc = {
   /** Which of these run ids the host still runs: the orphan sweep asks
    *  before settling a run that has gone silent. */
   liveRuns: (runIds: string[]) => invoke<string[]>("live_runs", { runIds }),
+  /** Hand a message to the turn that is already running (engines whose
+   *  `supportsSteer` is true). Rejects when the session has no live turn left
+   *  to steer — the caller then sends the text as the next turn instead. */
+  steerSession: (
+    sessionId: string,
+    message: string,
+    images: string[],
+    workspacePath: string,
+  ) =>
+    invoke<void>("steer_session", {
+      sessionId,
+      message,
+      images: images.length ? images : null,
+      workspacePath,
+    }),
   // 电脑操控 (computer use)
   /** macOS TCC probe. `osPermissionsRequired` is false on Windows/Linux,
    *  where the driver needs no OS grant. */

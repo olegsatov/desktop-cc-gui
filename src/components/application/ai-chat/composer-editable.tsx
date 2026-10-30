@@ -20,6 +20,18 @@ import { type PromptMenuHandle } from "@/components/application/ai-chat/prompt-m
 import { cx } from "@/utils/cx";
 
 /**
+ * What a send gesture asks the host to do with the message:
+ * - `queue` — plain Enter: send it now when idle, park it behind the running
+ *   turn otherwise (the long-standing behavior).
+ * - `now` — the platform's primary modifier (⌘ on macOS, Ctrl elsewhere):
+ *   never wait behind the running turn — stop it and send this instead.
+ * - `steer` — the other modifier (⌃ on macOS): hand the message to the turn
+ *   that is already running, without stopping it. Engines that cannot take a
+ *   mid-turn message (see EngineInfo.supportsSteer) fall back to `now`.
+ */
+export type ComposerSendGesture = "queue" | "now" | "steer";
+
+/**
  * ComposerEditable — the composer's contentEditable field and its event
  * wiring: IME composition gating (WKWebView fires `compositionend` BEFORE
  * the Enter keydown that commits the candidate, so Enter is gated on a sync
@@ -85,7 +97,7 @@ export function ComposerEditable({
   /** Re-derive completion triggers (`/` first, then `@`) after real input. */
   updateTriggers: () => void;
   disabled: boolean;
-  onSubmit?: (value: string) => void;
+  onSubmit?: (value: string, gesture: ComposerSendGesture) => void;
   onPasteImages?: (files: File[]) => void;
   /** Clipboard files with a resolvable path: routed exactly like a drop
    *  (images become attachments, other files `@path` mentions at the caret).
@@ -198,15 +210,21 @@ export function ComposerEditable({
         // ArrowUp/ArrowDown recall submitted prompts from history.
         if (handleHistoryKeyDown(event)) return;
         if (event.key !== "Enter") return;
-        // "cmdEnter": only ⌘/Ctrl+Enter sends; bare Enter falls through to
-        // the contentEditable default and inserts a newline.
-        const meta = event.metaKey || event.ctrlKey;
-        if (sendShortcut === "cmdEnter" ? !meta : event.shiftKey) return;
+        // ⌘ jumps the queue, ⌃ steers the running turn (see
+        // ComposerSendGesture). Read literally, not as "the platform's
+        // modifier": the two keys now mean different things, and the send
+        // shortcut setting only decides whether any modifier sends at all.
+        const primary = event.metaKey;
+        const secondary = event.ctrlKey;
+        // "cmdEnter": only the modifiers send; bare Enter falls through to the
+        // contentEditable default and inserts a newline.
+        if (sendShortcut === "cmdEnter" ? !primary && !secondary : event.shiftKey) return;
         event.preventDefault();
-        // Fires while streaming too: the host queues the message behind the
-        // active turn instead of dropping it.
+        // Fires while streaming too: the host decides what a send means there
+        // (queue behind the turn, jump the queue, or steer the running turn).
+        const gesture: ComposerSendGesture = primary ? "now" : secondary ? "steer" : "queue";
         const el = editableRef.current;
-        if (!disabled && el) onSubmit?.(extractText(el));
+        if (!disabled && el) onSubmit?.(extractText(el), gesture);
       }}
       onPaste={(event) => {
         const { imageFiles, otherFiles, uriPaths } = readClipboardFiles(

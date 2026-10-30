@@ -31,7 +31,7 @@ import {
   type BranchMenuItem,
 } from "@/components/application/ai-chat/branch-menu";
 import { ComposerResizeHandle } from "@/components/application/ai-chat/composer-resize-handle";
-import { ComposerEditable } from "@/components/application/ai-chat/composer-editable";
+import { ComposerEditable, type ComposerSendGesture } from "@/components/application/ai-chat/composer-editable";
 import { ComposerToolbar } from "@/components/application/ai-chat/composer-toolbar";
 import { ComposerPickerMenus } from "@/components/application/ai-chat/composer-picker-menus";
 import { SelectedBotChip } from "@/components/application/ai-chat/composer-bot-chip";
@@ -89,8 +89,11 @@ export interface ComposerProps {
   /** Controlled field value. */
   value?: string;
   onValueChange?: (value: string) => void;
-  /** Fires on the send button and on the configured send gesture (sendShortcut). */
-  onSubmit?: (value: string) => void;
+  /** Fires on the send button and on the configured send gesture (sendShortcut).
+   *  The gesture tells the host how the user sent it: plain Enter queues behind
+   *  a running turn, the primary modifier (⌘/Ctrl) jumps the queue, and the
+   *  other modifier asks for a steer into the running turn. */
+  onSubmit?: (value: string, gesture: ComposerSendGesture) => void;
   /** Send gesture: "enter" = Enter sends, Shift+Enter newline (default);
    *  "cmdEnter" = ⌘/Ctrl+Enter sends, plain Enter newline. */
   sendShortcut?: "enter" | "cmdEnter";
@@ -349,7 +352,7 @@ export function Composer({
           disabled={disabled}
           disabledReason={disabledReason}
           onStop={onStop}
-          onSend={() => onSubmit?.(value ?? "")}
+          onSend={() => onSubmit?.(value ?? "", "queue")}
         />
       )}
     </div>

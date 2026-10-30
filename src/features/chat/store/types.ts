@@ -293,6 +293,23 @@ export interface ChatStore {
   /** Send one queued message now: it takes the head of the queue, and a
    *  running turn is stopped so the send is not left behind it. */
   sendQueuedNow: (id: string, key?: string) => Promise<void>;
+  /** Send a message past the queue (the composer's primary-modifier gesture):
+   *  it takes the head of the queue and a running turn is stopped, so the
+   *  message becomes the next turn instead of waiting behind the current one. */
+  sendNow: (
+    text: string,
+    images: string[],
+    options?: SendOptions,
+    target?: ActiveSession | null,
+  ) => Promise<void>;
+  /** Hand a message to the turn that is already running (the composer's steer
+   *  gesture) instead of parking it behind that turn. Falls back to the
+   *  ordinary send when no mid-turn channel is available. */
+  steerMessage: (
+    text: string,
+    images: string[],
+    target?: ActiveSession | null,
+  ) => Promise<void>;
   /** Drop every queued message from a session (default: the active one). */
   clearQueue: (key?: string) => void;
   /** Stop the running turn (default: the active session). */

@@ -1783,6 +1783,8 @@ export const ko: Messages = {
       openSettings: "단축키 사용자 지정",
       sendMessage: "메시지 보내기",
       insertNewline: "줄바꿈 삽입",
+      sendNow: "지금 보내기(진행 중인 턴을 기다리지 않음)",
+      steer: "진행 중인 턴에 끼워 넣기(pi)",
       composerGroup: "입력창"
     }
   },

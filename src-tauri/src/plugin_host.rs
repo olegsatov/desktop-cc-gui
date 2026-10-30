@@ -774,6 +774,7 @@ mod tests {
                     supports_images: true,
                     supports_computer_use: false,
                     supports_memory: false,
+                    supports_steer: false,
                     supports_effort: true,
                     supports_tool_constraints: false,
                     permissions: vec!["default".to_string()],

@@ -101,6 +101,11 @@ export function ShortcutsGuideModal() {
             label={t("shortcuts.guide.insertNewline")}
             value={sendWithCmdEnter ? "enter" : "shift+enter"}
           />
+          <GuideRow
+            label={t("shortcuts.guide.sendNow")}
+            value="cmd+enter"
+          />
+          <GuideRow label={t("shortcuts.guide.steer")} value="ctrl+enter" />
         </div>
       </div>
       <div className="flex justify-end border-t border-separator-border px-5 py-3">

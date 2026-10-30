@@ -5,6 +5,7 @@ import {
   StatusBar,
   type ComposerInputHandle,
 } from "@/components/application/ai-chat/ai-chat-composer";
+import type { ComposerSendGesture } from "@/components/application/ai-chat/composer-editable";
 import { MessageQueue } from "@/components/application/ai-chat/message-queue";
 import type { ContextSegment } from "@/components/application/agent-limits/agent-limits-card";
 import type { BranchInfo, Workspace } from "@/lib/ipc";
@@ -165,7 +166,7 @@ function FooterComposer({
   active: ActiveSession | null;
   draft: string;
   onDraftChange: (value: string) => void;
-  onSubmit: (value: string) => void;
+  onSubmit: (value: string, gesture: ComposerSendGesture) => void;
   sendShortcut: string;
   onStop: () => void;
   streaming: boolean;
@@ -523,7 +524,7 @@ export function ConversationFooter({
   onRemoveImage: (path: string) => void;
   draft: string;
   onDraftChange: (value: string) => void;
-  onSubmit: (value: string) => void;
+  onSubmit: (value: string, gesture: ComposerSendGesture) => void;
   sendShortcut: string;
   onStop: () => void;
   streaming: boolean;

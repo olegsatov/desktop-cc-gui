@@ -518,6 +518,13 @@ impl Engine for PiFamilyEngine {
         }
         Ok(())
     }
+    /// pi 的 rpc 模式为整个回合留着 stdin（提问应答就走在同一根管道上），
+    /// 所以正在跑的回合能收下一条 steering 消息：pi 在当前工具批处理之后、
+    /// 下一次模型调用之前投递它。omp 的 rpc-ui 是同一个 fork 的协议，但
+    /// 没有实测过 steer 帧，不假装能收。
+    fn supports_steer(&self) -> bool {
+        self.id == "pi"
+    }
     /// omp exposes real approval switches (`--approval-mode`,
     /// `--auto-approve`); pi 0.85 has none of them, so it keeps the trait
     /// default. "plan" 由 OMP 原生 ACP 计划流程承接（plan_approval 的

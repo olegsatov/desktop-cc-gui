@@ -93,7 +93,7 @@ describe("ComposerEditable IME Enter", () => {
     await compose("compositionend");
     vi.mocked(Date.now).mockReturnValue(1000 + delay);
     expect((await enter()).defaultPrevented).toBe(true);
-    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("中文😀");
+    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("中文😀", "queue");
   });
 
   it("WebKit 候选确认回车保留输入法默认行为、不发送，紧接的独立回车发送", async () => {
@@ -102,7 +102,7 @@ describe("ComposerEditable IME Enter", () => {
     expect((await enter({ keyCode: 229 })).defaultPrevented).toBe(false);
     expect(props.onSubmit).not.toHaveBeenCalled();
     expect((await enter()).defaultPrevented).toBe(true);
-    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("中文😀");
+    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("中文😀", "queue");
   });
 
   it("组合输入期间的确认键由输入法处理", async () => {
@@ -141,7 +141,24 @@ describe("ComposerEditable IME Enter", () => {
   it("普通英文回车仍发送", async () => {
     editable.textContent = "hello";
     expect((await enter()).defaultPrevented).toBe(true);
-    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("hello");
+    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("hello", "queue");
+  });
+
+  it.each([
+    ["metaKey", "now"],
+    ["ctrlKey", "steer"],
+  ] as const)("⌘→立即发送、⌃→插入当前回合：%s+Enter 送出的手势是 %s", async (modifier, gesture) => {
+    expect((await enter({ [modifier]: true })).defaultPrevented).toBe(true);
+    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("中文😀", gesture);
+  });
+
+  it("cmdEnter 模式下裸 Enter 仍换行，修饰键回车照常发送", async () => {
+    props.sendShortcut = "cmdEnter";
+    await render();
+    expect((await enter()).defaultPrevented).toBe(false);
+    expect(props.onSubmit).not.toHaveBeenCalled();
+    expect((await enter({ metaKey: true })).defaultPrevented).toBe(true);
+    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("中文😀", "now");
   });
 
   it("选字后 Shift+Enter 仍换行", async () => {
@@ -157,7 +174,10 @@ describe("ComposerEditable IME Enter", () => {
     expect((await enter()).defaultPrevented).toBe(false);
     expect(props.onSubmit).not.toHaveBeenCalled();
     expect((await enter({ [modifier]: true })).defaultPrevented).toBe(true);
-    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith("中文😀");
+    expect(props.onSubmit).toHaveBeenCalledExactlyOnceWith(
+      "中文😀",
+      modifier === "metaKey" ? "now" : "steer",
+    );
   });
 
   it("禁用时不发送且不意外换行", async () => {

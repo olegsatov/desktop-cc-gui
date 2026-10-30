@@ -167,7 +167,7 @@ describe("Composer 中文编辑与历史召回", () => {
         keyCode: 13,
       }));
     });
-    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("完整中文😀");
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("完整中文😀", "queue");
     expect(extractText(editable)).toBe("完整中文😀");
   });
 
@@ -199,7 +199,7 @@ describe("Composer 中文编辑与历史召回", () => {
       }));
     });
     await key("Enter", { keyCode: 13 });
-    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("下一次输入");
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("下一次输入", "queue");
   });
 });
 

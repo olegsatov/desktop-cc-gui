@@ -276,6 +276,13 @@ pub trait Engine: Send + Sync {
     ) -> Result<(), String> {
         Ok(())
     }
+    /// Whether a running turn can take a mid-turn message over the same
+    /// interactive channel the launch kept open (pi's rpc stdin). False means
+    /// the only way to get a new instruction in is to stop the turn and send
+    /// it as the next one — the composer's "send now" path.
+    fn supports_steer(&self) -> bool {
+        false
+    }
     /// Whether this engine supports reasoning effort configuration.
     fn supports_effort(&self) -> bool {
         false
@@ -406,6 +413,9 @@ pub struct EngineInfo {
     /// Whether the engine can mount the per-bot memory tool. The send path
     /// reads it so a bot's memory guide only promises a tool that exists.
     pub supports_memory: bool,
+    /// Whether a running turn accepts a mid-turn steering message; the
+    /// composer's steer gesture falls back to "send now" when false.
+    pub supports_steer: bool,
     /// Whether this engine supports reasoning effort configuration.
     pub supports_effort: bool,
     /// Whether this engine can enforce a per-call tool whitelist (mission
@@ -496,6 +506,7 @@ fn list_engines_blocking() -> Vec<EngineInfo> {
                 supports_images: engine.supports_images(),
                 supports_computer_use: engine.supports_computer_use(),
                 supports_memory: engine.supports_memory(),
+                supports_steer: engine.supports_steer(),
                 supports_effort: engine.supports_effort(),
                 supports_tool_constraints: engine.supports_tool_constraints(),
                 permissions: engine
@@ -1501,6 +1512,59 @@ pub async fn live_runs(
 ) -> Result<Vec<String>, String> {
     Ok(state.processes.live_run_ids(&run_ids))
 }
+/// Frame ids for steering messages: the CLI answers every stdin command with a
+/// `response` frame carrying the same id.
+static NEXT_STEER_FRAME_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// Hand a message to the turn that is already running.
+///
+/// Only an engine that kept its interactive channel open can take one
+/// (`Engine::supports_steer` — pi's rpc stdin). The engine decides when the
+/// message lands: pi delivers it after the running tool batch and before the
+/// next model call, so this never stops the turn — `interrupt_session` stays
+/// the stop path. A session that already settled closed its stdin and rejects
+/// the write; the caller answers that by sending the text as a new turn.
+#[tauri::command]
+pub async fn steer_session(
+    state: tauri::State<'_, crate::AppState>,
+    session_id: String,
+    message: String,
+    images: Option<Vec<String>>,
+    workspace_path: Option<String>,
+) -> Result<(), String> {
+    let images = images.unwrap_or_default();
+    if message.trim().is_empty() && images.is_empty() {
+        return Err("a steering message needs text or an image".to_string());
+    }
+    let mut frame = serde_json::json!({
+        "id": format!(
+            "ccgui-steer-{}",
+            NEXT_STEER_FRAME_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ),
+        "type": "steer",
+        "message": message,
+    });
+    if !images.is_empty() {
+        // Same payload shape as the launch prompt: the CLI's ImageContent.
+        let workspace = workspace_path
+            .as_deref()
+            .map(std::path::Path::new)
+            .unwrap_or_else(|| std::path::Path::new(""));
+        let mut payloads = Vec::new();
+        for raw in &images {
+            let (mime, data) = images::load_image(raw, workspace)?;
+            payloads.push(serde_json::json!({
+                "type": "image",
+                "data": data,
+                "mimeType": mime,
+            }));
+        }
+        frame["images"] = serde_json::Value::Array(payloads);
+    }
+    state
+        .processes
+        .write_line(&session_id, frame.to_string())
+        .await
+}
 /// Answer a pending question card. Multiple transports share this command:
 /// - claude (control protocol): the answers merge into the parked tool input
 ///   and ride stdin as a `control_response`.
@@ -2412,6 +2476,7 @@ mod permission_tests {
             supports_images: true,
             supports_computer_use: true,
             supports_memory: true,
+            supports_steer: true,
             supports_effort: true,
             supports_tool_constraints: false,
             permissions: vec!["auto".into()],
@@ -2419,6 +2484,7 @@ mod permission_tests {
         let json = serde_json::to_value(&info).expect("EngineInfo serializes");
         assert_eq!(json["supportsComputerUse"], serde_json::json!(true));
         assert_eq!(json["supportsMemory"], serde_json::json!(true));
+        assert_eq!(json["supportsSteer"], serde_json::json!(true));
         assert!(json.get("supports_computer_use").is_none());
     }
 

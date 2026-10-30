@@ -146,6 +146,8 @@ export function createMessagingActions(
   | "moveQueued"
   | "clearQueue"
   | "sendQueuedNow"
+  | "sendNow"
+  | "steerMessage"
   | "interrupt"
   | "compactContext"
   | "refreshSessionUsage"
@@ -1018,6 +1020,92 @@ export function createMessagingActions(
       });
       if (running) await interruptByKey(targetKey);
       drainQueue(targetKey);
+    },
+
+    /** Send a message past the queue. An engine takes one prompt at a time, so
+     *  "now" means stopping the turn in flight: the message is parked at the
+     *  head of the queue, the stop's own park is lifted, and the exit drain
+     *  sends this message instead of waiting the turn out. Same semantics as
+     *  the queue card's own "Send" (`sendQueuedNow`); this is the composer's
+     *  primary-modifier gesture. */
+    sendNow: async (text, images, options, target) => {
+      const session = target === undefined ? get().active : target;
+      if (!session || (!text.trim() && images.length === 0)) return;
+      const key = sessionKey(
+        session.engine,
+        session.sessionId,
+        session.workspacePath,
+      );
+      const running = get().bySession[key]?.streaming === true;
+      set((s) => {
+        const prev = s.bySession[key] ?? EMPTY_SESSION;
+        return {
+          bySession: {
+            ...s.bySession,
+            [key]: {
+              ...prev,
+              queue: [
+                {
+                  id: newId(),
+                  text,
+                  images,
+                  queuedAt: Date.now(),
+                  computerUse: options?.computerUse === true,
+                },
+                ...prev.queue,
+              ],
+              interrupted: false,
+            },
+          },
+        };
+      });
+      if (running) await interruptByKey(key);
+      drainQueue(key);
+    },
+
+    /** Hand a message to the turn that is already running instead of parking it
+     *  behind that turn (the composer's steer gesture). The engine decides when
+     *  it lands — pi delivers it after the running tool batch — so the turn is
+     *  never stopped here. Anything that makes a mid-turn message impossible
+     *  (no live turn, no native session id, an engine without the channel, a
+     *  write the settled run refused) falls back to the ordinary send path: the
+     *  text is never dropped. */
+    steerMessage: async (text, images, target) => {
+      const session = target === undefined ? get().active : target;
+      if (!session || (!text.trim() && images.length === 0)) return;
+      const key = sessionKey(
+        session.engine,
+        session.sessionId,
+        session.workspacePath,
+      );
+      const sessionId = session.sessionId;
+      if (!sessionId || get().bySession[key]?.streaming !== true) {
+        await sendPrompt(session, text, images);
+        return;
+      }
+      try {
+        await ipc.steerSession(sessionId, text, images, session.workspacePath);
+      } catch {
+        // The turn settled between the keypress and the write (its stdin is
+        // gone): deliver the text the ordinary way instead of losing it.
+        if (get().bySession[key]?.streaming === true) {
+          get().queueMessage(text, images, undefined, session);
+        } else {
+          await sendPrompt(session, text, images);
+        }
+        return;
+      }
+      // The engine only reports the message back when it delivers it inside the
+      // turn, so show it now: without this row the text stays invisible until
+      // the transcript is reloaded from history.
+      appendCommittedRows(set, key, [
+        {
+          role: "user",
+          text,
+          ts: new Date().toISOString(),
+          images: images.length ? [...images] : undefined,
+        },
+      ]);
     },
 
     interrupt: async (target) => {

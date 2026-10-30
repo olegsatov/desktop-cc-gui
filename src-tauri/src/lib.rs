@@ -481,6 +481,7 @@ pub fn run() {
             engine::send_message,
             engine::interrupt_session,
             engine::live_runs,
+            engine::steer_session,
             engine::answer_question,
             engine::respond_plan_review,
             engine::list_plan_reviews,

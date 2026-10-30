@@ -1843,6 +1843,8 @@ export const zh = {
       openSettings: "自定义快捷键",
       sendMessage: "发送消息",
       insertNewline: "插入换行",
+      sendNow: "立即发送（不等当前回合）",
+      steer: "插入当前回合（pi）",
       composerGroup: "输入框",
     },
   },

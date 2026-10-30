@@ -16,6 +16,7 @@ vi.mock("@/lib/ipc", () => ({
     listEngines: vi.fn(async () => []),
     sendMessage: vi.fn(async () => ({ runId: `queued-run-${++runCounter}`, sessionId: null })),
     interruptSession: vi.fn(async () => true),
+    steerSession: vi.fn(async () => {}),
     rememberSessionModel: vi.fn(async () => {}),
     loadSessionPage: vi.fn(async () => ({ messages: [], nextBefore: null })),
     getAppSettings: vi.fn(async () => ({})),
@@ -186,6 +187,94 @@ describe("queued messages after a turn settles", () => {
       expect.objectContaining({ prompt: "再看一遍" }),
     );
     expect(queueOf()).toHaveLength(0);
+  });
+});
+
+describe("composer send gestures past the queue", () => {
+  beforeAll(async () => {
+    await useChatStore.getState().init();
+  });
+
+  beforeEach(() => {
+    runId = `gesture-run-${++runCounter}`;
+    vi.clearAllMocks();
+    localStorage.clear();
+    useChatStore.setState({
+      active: TAB,
+      activeEngine: "claude",
+      openTabs: [TAB],
+      models: { claude: "claude-sonnet-4" },
+      bySession: {
+        [KEY]: {
+          ...EMPTY_SESSION,
+          streaming: true,
+          turnStartedAt: Date.now(),
+          messages: [{ seq: 1, role: "user", text: "hi", ts: null }],
+          queue: [{ id: "q-1", text: "继续", images: [], queuedAt: 0 }],
+        },
+      },
+    });
+  });
+
+  /** ⌘: the message must not wait behind the running turn, and a turn the user
+   *  did not stop keeps its own queue position. */
+  it("sendNow stops the running turn and sends the message first", async () => {
+    await useChatStore.getState().sendNow("再看一遍", []);
+
+    expect(ipc.interruptSession).toHaveBeenCalled();
+    await vi.waitFor(() => expect(ipc.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: "再看一遍" }),
+    ));
+    expect(queueOf().map((item) => item.text)).toEqual(["继续"]);
+  });
+
+  it("sendNow sends without stopping when no turn is running", async () => {
+    useChatStore.setState((s) => ({
+      bySession: { ...s.bySession, [KEY]: { ...s.bySession[KEY], streaming: false } },
+    }));
+
+    await useChatStore.getState().sendNow("再看一遍", []);
+
+    expect(ipc.interruptSession).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(ipc.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: "再看一遍" }),
+    ));
+  });
+
+  /** ⌃: the turn keeps running; the message rides the engine's own mid-turn
+   *  channel and is shown immediately so the text is not invisible. */
+  it("steerMessage hands the text to the running turn without stopping it", async () => {
+    await useChatStore.getState().steerMessage("换个方向", []);
+
+    expect(ipc.steerSession).toHaveBeenCalledWith("s-1", "换个方向", [], WS);
+    expect(ipc.interruptSession).not.toHaveBeenCalled();
+    expect(ipc.sendMessage).not.toHaveBeenCalled();
+    const messages = useChatStore.getState().bySession[KEY]?.messages ?? [];
+    expect(messages.at(-1)).toMatchObject({ role: "user", text: "换个方向" });
+  });
+
+  it("steerMessage sends normally when no turn is running", async () => {
+    useChatStore.setState((s) => ({
+      bySession: { ...s.bySession, [KEY]: { ...s.bySession[KEY], streaming: false } },
+    }));
+
+    await useChatStore.getState().steerMessage("换个方向", []);
+
+    expect(ipc.steerSession).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(ipc.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: "换个方向" }),
+    ));
+  });
+
+  /** The turn settled between the keypress and the write: the text must not be
+   *  lost — it parks in the queue like any other send. */
+  it("steerMessage queues the text when the engine refuses the write", async () => {
+    vi.mocked(ipc.steerSession).mockRejectedValueOnce(new Error("stdin closed"));
+
+    await useChatStore.getState().steerMessage("换个方向", []);
+
+    expect(queueOf().map((item) => item.text)).toEqual(["继续", "换个方向"]);
+    expect(ipc.sendMessage).not.toHaveBeenCalled();
   });
 });
 
