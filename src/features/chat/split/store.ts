@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { readStoredJson, writeStored } from "@/lib/storage";
 import { useChatStore } from "../store";
 import { sameTab, parseDraftSessionKey, sessionKey, type ActiveSession } from "../store/persistence";
+import { setSplitSessionKeysProvider } from "../store/tab-limit";
 import {
   findPane,
   listPanes,
@@ -366,6 +367,22 @@ export function openSessionBeside(session: ActiveSession, zone: "left" | "right"
     : SOLO_PANE_ID;
   useSplitStore.getState().dropSession(target, zone, session);
 }
+
+/** Sessions standing in split panes. The tab cap (tab-limit.ts) keeps their
+ *  tabs: a pane goes away together with its tab (invariant 1 above), so
+ *  trimming one would silently drop a pane. Registered at module load — the
+ *  cap also runs while restoring tabs, before SplitLayout mounts, and the
+ *  layout itself is read from storage when this module is created. */
+export function splitPaneSessionKeys(): Set<string> {
+  const keys = new Set<string>();
+  for (const pane of listPanes(useSplitStore.getState().root)) {
+    const key = keyOf(pane.session);
+    if (key) keys.add(key);
+  }
+  return keys;
+}
+
+setSplitSessionKeysProvider(splitPaneSessionKeys);
 
 let installed = false;
 let lastActive: ActiveSession | null = null;

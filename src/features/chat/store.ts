@@ -135,6 +135,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
     removeTab,
     forgetClosedTab,
     forgetClosedTabs,
+    trimTabs,
     ...tabActions
   } = createTabActions({ set, get, sessionEnded });
   const { drainQueue, markUnseenIfBackground, ...messagingActions } =
@@ -155,6 +156,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
     drainQueue,
     markUnseenIfBackground,
     turnSettled,
+    trimTabs,
   });
   const workspaceActions = createWorkspaceActions({
     set,

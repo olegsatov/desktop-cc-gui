@@ -40,6 +40,7 @@ import {
   dispatchSessionRestored,
 } from "@/features/plugins/runtime/hooks";
 import { clearScopedContributions, sessionLifecycleBase } from "./lifecycle";
+import { tabsOverLimit } from "./tab-limit";
 import {
   mergeExternalSessions,
   preserveUnscannedSessions,
@@ -107,6 +108,8 @@ export interface SessionDeps {
     workspacePath: string,
   ) => void;
   forgetClosedTab: (key: string) => void;
+  /** Close the oldest session tabs once the strip is over the cap (tab-limit.ts). */
+  trimTabs: () => void;
   drainQueue: (key: string) => void;
   markUnseenIfBackground: (key: string) => void;
   /** 一轮结束后的复盘计数钩子（store.ts 接记忆模块）。 */
@@ -212,7 +215,7 @@ export function createSessionActions(
       });
       ensureUsableEngine(engines);
       // Restore persisted tabs; drop ones whose workspace/session is gone.
-      const restoredTabs = readPersistedTabs().filter(
+      const storedTabs = readPersistedTabs().filter(
         (t) =>
           workspaces.some((w) => w.path === t.workspacePath) &&
           (t.sessionId === null ||
@@ -220,8 +223,17 @@ export function createSessionActions(
               (s) => s.engine === t.engine && s.sessionId === t.sessionId,
             )),
       );
-      set({ openTabs: restoredTabs });
       const persistedActive = readPersistedActive();
+      // A list saved by an older build can be far over the cap (496 tabs on
+      // 30.10.2026). Trim it silently — those tabs were never opened in this
+      // run, so there is no close to announce to plugins.
+      const restoredTabs =
+        tabsOverLimit(storedTabs, {
+          active: persistedActive,
+          streamingByKey: {},
+          waitingByKey: {},
+        }) ?? storedTabs;
+      set({ openTabs: restoredTabs });
       const activeTab =
         persistedActive &&
         restoredTabs.some((t) =>
@@ -453,6 +465,8 @@ export function createSessionActions(
         const unseen = key in s.unseen ? omitKey(s.unseen, key) : s.unseen;
         return { openTabs, active: tab, unseen, activeEngine: engine };
       });
+      // Opening a session is what grows the strip: keep it bounded.
+      deps.trimTabs();
       // A selection restores the session whether or not its messages are
       // already cached (e.g. reopened after a tab close): the hook fires once
       // per frontend lifetime, before any load.

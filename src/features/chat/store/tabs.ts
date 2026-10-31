@@ -14,6 +14,7 @@ import { sessionSelection } from "./selection";
 import { dispatchSessionClosed } from "@/features/plugins/runtime/hooks";
 import { clearScopedContributions, sessionLifecycleBase } from "./lifecycle";
 import { getConversationModeState } from "@/features/plugins/conversation/state";
+import { tabKey, tabsOverLimit } from "./tab-limit";
 import type { ChatStore } from "./types";
 import type { StoreGet, StoreSet } from "./context";
 
@@ -48,6 +49,9 @@ export interface TabHelpers {
   forgetClosedTab: (key: string) => void;
   /** Drop reopen-cache entries for a removed workspace's dead keys. */
   forgetClosedTabs: (keys: Set<string>) => void;
+  /** Close the oldest session tabs once the strip is over the cap
+   *  (see tab-limit.ts). Called after a tab was added. */
+  trimTabs: () => void;
 }
 
 export function createTabActions(
@@ -193,12 +197,51 @@ export function createTabActions(
     }
   }
 
+  /** The ordinary close path (the strip's ×, ⌘W, the sidebar menu). */
+  function closeTab(
+    engine: string,
+    sessionId: string | null,
+    workspacePath: string,
+  ) {
+    if (getConversationModeState().isTabCloseBlocked(sessionKey(engine, sessionId, workspacePath), workspacePath)) return;
+    dispatchSessionClosed(
+      sessionLifecycleBase(get, { engine, sessionId, workspacePath }),
+    );
+    clearScopedContributions(set, engine, sessionId, workspacePath);
+    removeTab(engine, sessionId, workspacePath);
+  }
+
+  /** Keep the strip bounded: after a tab was added, close the oldest session
+   *  tabs that are over the cap. Closing goes through the ordinary path, so
+   *  plugins, the split layout and the memory review see exactly what a
+   *  manual × would (see tab-limit.ts for what is never closed). */
+  function trimTabs() {
+    const s = get();
+    const kept = tabsOverLimit(s.openTabs, {
+      active: s.active,
+      streamingByKey: s.streamingByKey,
+      waitingByKey: s.waitingByKey,
+      closeBlocked: (tab) =>
+        getConversationModeState().isTabCloseBlocked(
+          sessionKey(tab.engine, tab.sessionId, tab.workspacePath),
+          tab.workspacePath,
+        ),
+    });
+    if (!kept) return;
+    const keep = new Set(kept.map(tabKey));
+    for (const tab of s.openTabs) {
+      if (keep.has(tabKey(tab))) continue;
+      closeTab(tab.engine, tab.sessionId, tab.workspacePath);
+    }
+  }
+
   return {
     activateTab,
     stampActiveTab,
     removeTab,
     forgetClosedTab,
     forgetClosedTabs,
+    trimTabs,
 
     startNewChat: (workspacePath) => {
       // One pending chat per workspace+engine: re-focus it instead of
@@ -273,16 +316,10 @@ export function createTabActions(
           sessionSelection(get(), tab.engine, tab.sessionId, tab.workspacePath),
         );
       }
+      trimTabs();
     },
 
-    closeTab: (engine, sessionId, workspacePath) => {
-      if (getConversationModeState().isTabCloseBlocked(sessionKey(engine, sessionId, workspacePath), workspacePath)) return;
-      dispatchSessionClosed(
-        sessionLifecycleBase(get, { engine, sessionId, workspacePath }),
-      );
-      clearScopedContributions(set, engine, sessionId, workspacePath);
-      removeTab(engine, sessionId, workspacePath);
-    },
+    closeTab,
     focusTab: (engine, sessionId, workspacePath) => {
       // Reuse the stored tab so its per-tab model/effort overrides apply.
       const stored = get().openTabs.find((t) =>
