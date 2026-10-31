@@ -1,4 +1,5 @@
 import { listenEngineEvents, type EngineEventPayload } from "@/lib/events";
+import { markPluginOwnedSession } from "./owned-sessions";
 import { pluginBus } from "./events";
 
 /**
@@ -54,6 +55,57 @@ function errorTextOf(event: EngineEventPayload): string | null {
 }
 
 let bridged = false;
+let stateWatched = false;
+
+/**
+ * 会话状态旁路：插件看不到宿主会话的「正在跑 / 停在用户身上」，
+ * 而侧栏红点用的就是同一份状态（chat store 的 streamingByKey / waitingByKey）。
+ * 这里把它转给发起轮次的插件：`kind: "state"`，state 为 "running" | "waiting" | null。
+ * 只在状态真的翻转时发一次，不跟每一条流式增量。
+ */
+function ensureRunStateWatch(): void {
+  if (stateWatched) return;
+  stateWatched = true;
+  void import("@/features/chat/store").then((chat) => {
+    // 单测会把这个模块换成桩；没有 subscribe 就安静退出。
+    if (typeof chat.useChatStore?.subscribe !== "function") return;
+    const last = new Map<string, string>();
+    chat.useChatStore.subscribe((state) => {
+      for (const [runId, record] of runs) {
+        const key = ownedSessionKey(record.engine, record.sessionId ?? "", record.workspacePath);
+        const next =
+          state.waitingByKey[key] === true
+            ? "waiting"
+            : state.streamingByKey[key] === true
+              ? "running"
+              : "";
+        if (last.get(runId) === next) continue;
+        last.set(runId, next);
+        pluginBus.emit(`plugin-run://${record.pluginId}`, {
+          runId,
+          sessionId: record.sessionId,
+          engine: record.engine,
+          workspacePath: record.workspacePath,
+          kind: "state",
+          state: next === "" ? null : next,
+          error: null,
+        });
+      }
+    });
+  });
+}
+
+/** 会话键，和 chat store 的 `sessionKey()` 同一套写法（那里带着侧栏的语义，
+ *  这里只需要一致；单独写是为了不让插件运行时静态依赖聊天 store）。 */
+function ownedSessionKey(engine: string, sessionId: string, workspacePath: string): string {
+  return sessionId ? `${engine}/${sessionId}` : `new:${engine}:${workspacePath}`;
+}
+
+/** 会话 id 一学到就记下来：它属于插件，不进用户的侧栏列表。 */
+function rememberSession(record: RunRecord, sessionId: string | null): void {
+  if (!sessionId) return;
+  markPluginOwnedSession(ownedSessionKey(record.engine, sessionId, record.workspacePath));
+}
 
 /** 一次绑定的引擎事件旁路：只转发属于插件轮次的终态。 */
 function ensureRunBridge(): void {
@@ -67,6 +119,7 @@ function ensureRunBridge(): void {
       // 一学到就转给插件：它的「打开会话」按钮依赖这个 id。
       if (event.sessionId && !record.sessionId) {
         record.sessionId = event.sessionId;
+        rememberSession(record, event.sessionId);
         pluginBus.emit(`plugin-run://${record.pluginId}`, {
           runId: event.runId,
           sessionId: event.sessionId,
@@ -121,7 +174,10 @@ export async function startPluginChatRun(
     await store.send(prompt, [], {
       onStarted: (info) => {
         handle = info;
-        runs.set(info.runId, { pluginId, engine, workspacePath, sessionId: info.sessionId });
+        const record: RunRecord = { pluginId, engine, workspacePath, sessionId: info.sessionId };
+        runs.set(info.runId, record);
+        ensureRunStateWatch();
+        rememberSession(record, info.sessionId);
         // started 先于 send 返回发出：插件在 startRun resolve 前就能把轮次
         // 认领到自己的任务上，之后不会漏掉紧跟的 done/error。
         pluginBus.emit(`plugin-run://${pluginId}`, {
