@@ -33,7 +33,6 @@ import {
   setSessionSourcesChangedCallback,
 } from "@/features/plugins/runtime/session-source";
 import { emitSessionActivated } from "@/features/plugins/runtime/events";
-import { isPluginOwnedSessionKey } from "@/features/plugins/runtime/owned-sessions";
 import { sessionSelection } from "./selection";
 import {
   dispatchSessionClosed,
@@ -71,22 +70,6 @@ function withoutArchived(
   return sessions.filter(
     (session) =>
       !archived[sessionKey(session.engine, session.sessionId, session.workspacePath)],
-  );
-}
-
-/**
- * Sessions a plugin ran for the user (scheduled tasks) stay out of the
- * sidebar: it lists what the user opened themselves, and the plugin shows its
- * own runs in its own list. Filtered here, at the store, so every consumer —
- * threads, status dots, counts — agrees.
- */
-function withoutPluginOwned(sessions: SessionMeta[]): SessionMeta[] {
-  if (sessions.length === 0) return sessions;
-  return sessions.filter(
-    (session) =>
-      !isPluginOwnedSessionKey(
-        sessionKey(session.engine, session.sessionId, session.workspacePath),
-      ),
   );
 }
 
@@ -209,7 +192,7 @@ export function createSessionActions(
       );
       set({
         workspaces,
-        sessions: visibleSessions(withoutPluginOwned(allSessions), engines),
+        sessions: visibleSessions(allSessions, engines),
         archivedSessionKeys,
         engines,
       });
@@ -307,11 +290,9 @@ export function createSessionActions(
       }
       set((s) => {
         const visible = visibleSessions(
-          withoutPluginOwned(
-            withoutArchived(
-              preserveUnscannedSessions(merged, s.sessions, s.bySession),
-              archivedSessionKeys,
-            ),
+          withoutArchived(
+            preserveUnscannedSessions(merged, s.sessions, s.bySession),
+            archivedSessionKeys,
           ),
           s.engines,
         );

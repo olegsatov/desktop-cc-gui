@@ -1,6 +1,7 @@
 import { ipc, worktreeMetaOf } from "@/lib/ipc";
 import { dismissCenterSurfaces } from "@/features/chat/center-surfaces";
-import { useChatStore } from "@/features/chat/store";
+import { sessionKey, useChatStore } from "@/features/chat/store";
+import { isPluginOwnedSessionKey } from "./owned-sessions";
 import type { Disposer, PluginWorkspaceRow, WorktreeBadgeTarget } from "@ccgui/plugin-sdk";
 import { withAuthorizedHostInvoke } from "./hardening";
 
@@ -139,7 +140,10 @@ export function openPluginSession(
   // 远程来源(如 WSL 发行版)的会话宿主扫描不到,但工作区已登记 → 放行:
   // 打开后走 --resume,历史回放失败由 store 既有 error 分支呈现。
   const workspaceRegistered = store.workspaces.some((w) => w.path === workspacePath);
-  if (!known && !workspaceRegistered) {
+  // Прогон, который запустил сам плагин, принадлежит ему: открываем его даже
+  // в папке, не заведённой проектом (и пока скан сессий до неё не дошёл).
+  const pluginOwned = isPluginOwnedSessionKey(sessionKey(engine, sessionId, workspacePath));
+  if (!known && !pluginOwned && !workspaceRegistered) {
     throw new Error(
       `[plugins] "${pluginId}" sessions.selectSession: unknown session ${engine}/${sessionId}`,
     );

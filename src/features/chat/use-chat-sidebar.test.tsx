@@ -10,7 +10,8 @@ import { useGitStore } from "@/features/git/store";
 import { resetMissionStore, useMissionStore } from "@/features/mission/store";
 import { usePluginHubStore } from "@/features/plugins/hub/store";
 import { usePluginTabsStore } from "@/features/plugins/runtime/center-tabs";
-import { useChatStore } from "./store";
+import { markPluginOwnedSession } from "@/features/plugins/runtime/owned-sessions";
+import { sessionKey, useChatStore } from "./store";
 import { UNBOUND_DRAFT_KEY } from "./store/persistence";
 import { useChatSidebar } from "./use-chat-sidebar";
 // 命名空间导入：vi.mocked 必须走属性访问，命名导入会抛错。
@@ -78,14 +79,16 @@ let captured: AiChatRepo[];
 let sidebar: ReturnType<typeof useChatSidebar>;
 
 function Harness() {
-  const streaming = useChatStore((s) => s.streamingByKey["codex/s-1"] === true);
-  const retrying = useChatStore((s) => s.retryingByKey["codex/s-1"] === true);
-  const waiting = useChatStore((s) => s.waitingByKey["codex/s-1"] === true);
+  // Как в приложении: три массива идут вровень со списком сессий
+  const sessions = useChatStore((s) => s.sessions);
+  const streamingByKey = useChatStore((s) => s.streamingByKey);
+  const retryingByKey = useChatStore((s) => s.retryingByKey);
+  const waitingByKey = useChatStore((s) => s.waitingByKey);
   sidebar = useChatSidebar({
     sessionById: new Map(),
-    threadStreaming: [streaming],
-    threadRetrying: [retrying],
-    threadWaiting: [waiting],
+    threadStreaming: sessions.map((s) => streamingByKey[sessionKey(s.engine, s.sessionId, s.workspacePath)] === true),
+    threadRetrying: sessions.map((s) => retryingByKey[sessionKey(s.engine, s.sessionId, s.workspacePath)] === true),
+    threadWaiting: sessions.map((s) => waitingByKey[sessionKey(s.engine, s.sessionId, s.workspacePath)] === true),
     collapseSidebarOnMobile: () => {},
     composerInputRef: { current: null },
     setDialog: () => {},
@@ -127,6 +130,17 @@ describe("useChatSidebar repo mapping", () => {
   it("threadLimit 透传到 repo(分页折叠依赖它,删了设置就失效)", () => {
     expect(captured).toHaveLength(1);
     expect(captured[0]?.threadLimit).toBe(7);
+    expect(captured[0]?.threads.map((t) => t.id)).toEqual(["codex/s-1"]);
+  });
+
+  it("прогон задачи (сессия плагина) в списке слева не показывается, но из списка приложения не пропадает", async () => {
+    markPluginOwnedSession("codex/s-task");
+    await act(async () => {
+      useChatStore.setState({
+        sessions: [SESSION, { ...SESSION, sessionId: "s-task", title: "Прогон задачи" }],
+      });
+    });
+    expect(useChatStore.getState().sessions.map((s) => s.sessionId)).toEqual(["s-1", "s-task"]);
     expect(captured[0]?.threads.map((t) => t.id)).toEqual(["codex/s-1"]);
   });
 

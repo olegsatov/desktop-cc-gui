@@ -13,6 +13,7 @@ import { worktreeMetaOf, type SessionMeta, type Workspace } from "@/lib/ipc";
 import { isWeb, pickDirectories } from "@/lib/platform";
 import { recentPointerAnchor } from "@/lib/pointer-anchor";
 import { parseDraftSessionKey, sessionKey, useChatStore, sortedWorkspaceGroups } from "./store";
+import { isPluginOwnedSessionKey } from "@/features/plugins/runtime/owned-sessions";
 import { dismissCenterSurfaces } from "./center-surfaces";
 import { focusComposerWhenVisible } from "./focus-composer";
 import { relativeTime } from "./time";
@@ -77,6 +78,23 @@ export function useChatSidebar({
   // Archived workspaces hide from the main tree; everything else (group
   // bucketing, ordering, aliases) works on the visible subset.
   const archivedIds = useMemo(() => new Set(archivedWorkspaces), [archivedWorkspaces]);
+  // Прогоны задач (сессии, которые запустил плагин) в списке слева не
+  // показываются: там место тому, что человек открывал сам, а свои прогоны
+  // плагин показывает в своей вкладке. Само приложение об этих сессиях знает —
+  // иначе прогон нельзя было бы открыть из панели задач, — прячем только показ.
+  // Индекс исходного списка сохраняем: по нему берутся точки состояния.
+  const listed = useMemo(
+    () =>
+      sessions
+        .map((session, index) => ({ session, index }))
+        .filter(
+          ({ session }) =>
+            !isPluginOwnedSessionKey(
+              sessionKey(session.engine, session.sessionId, session.workspacePath),
+            ),
+        ),
+    [sessions],
+  );
   // 订阅插件桥:插件 activate/热重载换 hooks 后,侧栏徽标随之重算。
   const uiHooks = useWorkspaceUIHooks();
   const visibleWorkspaces = useMemo(
@@ -110,14 +128,14 @@ export function useChatSidebar({
     const firstWorkspace = parentWorkspaces.find((w) => !w.groupId || !groupIds.has(w.groupId))
       ?? groups.map((group) => parentWorkspaces.find((w) => w.groupId === group.id)).find(Boolean)
       ?? parentWorkspaces[0];
-    const sorted = [...sessions].sort((a, b) => {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+    const sorted = [...listed].sort((a, b) => {
+      if (a.session.pinned !== b.session.pinned) return a.session.pinned ? -1 : 1;
+      return (b.session.updatedAt ?? 0) - (a.session.updatedAt ?? 0);
     });
     const streamingById = new Map<string, boolean>();
     const retryingById = new Map<string, boolean>();
     const waitingById = new Map<string, boolean>();
-    sessions.forEach((s, i) => {
+    listed.forEach(({ session: s, index: i }) => {
       if (threadStreaming[i]) streamingById.set(`${s.engine}/${s.sessionId}`, true);
       if (threadRetrying[i]) retryingById.set(`${s.engine}/${s.sessionId}`, true);
       if (threadWaiting[i]) waitingById.set(`${s.engine}/${s.sessionId}`, true);
@@ -154,7 +172,7 @@ export function useChatSidebar({
               },
             ];
           }),
-          ...sorted.flatMap((s) => {
+          ...sorted.flatMap(({ session: s }) => {
             if (s.workspacePath !== w.path) return [];
             return [
               {
@@ -174,7 +192,7 @@ export function useChatSidebar({
       };
     };
     return parentWorkspaces.map((w) => buildRepo(w, w.id === firstWorkspace?.id));
-  }, [parentWorkspaces, childrenByParent, workspaceGroups, workspaceAliases, sessions, openTabs, threadLimit, threadStreaming, threadRetrying, threadWaiting, unseen, i18n.language, uiHooks, t]);
+  }, [parentWorkspaces, childrenByParent, workspaceGroups, workspaceAliases, listed, openTabs, threadLimit, threadStreaming, threadRetrying, threadWaiting, unseen, i18n.language, uiHooks, t]);
   // 工作区二级分类: bucket repos by their workspace's group assignment.
   // Ungrouped repos come first (no header), then groups in settings order.
   // Empty groups stay in the tree — the sidebar renders them like populated
