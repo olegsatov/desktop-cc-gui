@@ -14,6 +14,7 @@ import {
 } from "./context";
 import { bridgePluginAgentEvents, bridgeUsageEvents } from "./events";
 import { installHardening, runAsPlugin } from "./hardening";
+import { bridgeSessionAttention } from "./session-attention";
 import { validateManifest } from "./permissions";
 import { applyDeclarativePlugin } from "../declarative/interpreter";
 import {
@@ -438,6 +439,9 @@ async function doBootstrap(
   installHardening();
   bridgeUsageEvents();
   bridgePluginAgentEvents();
+  // 「会话停在用户身上」（侧栏红点）也只有宿主知道：转成 session://attention
+  // 总线话题给插件，见 session-attention.ts。
+  bridgeSessionAttention();
   // Backend listing is best-effort for builtins: a corrupt plugins.json must
   // not take builtin plugins down with it. But a failed list is a transient
   // startup condition, not a terminal one — load builtins, then rethrow so
