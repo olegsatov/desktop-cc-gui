@@ -27,15 +27,19 @@ import { withAuthorizedHostInvoke } from "./hardening";
  * 解析，不是侧栏结构）。返回的是拷贝，插件改它动不到 store。
  */
 export function listPluginWorkspaces(): PluginWorkspaceRow[] {
-  return useChatStore.getState().workspaces.map((workspace) => {
+  const store = useChatStore.getState();
+  return store.workspaces.map((workspace) => {
     // worktree 子行另外投影出分支 / 来源 PR（meta.worktree 的公开部分）：插件
     // 要用它把 PR 绑到本地 worktree（如 git-tasks 的 WORKTREE 列）。其余 meta
     // （wsl 等宿主/其它插件的私有载荷）仍然不出。
     const meta = worktreeMetaOf(workspace);
+    // 侧栏显示名：用户改过名字就用他的名字（别名），否则目录名。插件看到的
+    // 名字必须和侧栏一致，否则同一工作区在插件里叫法不同。
+    const alias = store.workspaceAliases[workspace.id]?.trim();
     return {
       id: workspace.id,
       path: workspace.path,
-      name: workspace.name,
+      name: alias || workspace.name,
       ...(workspace.kind ? { kind: workspace.kind } : {}),
       groupId: workspace.groupId,
       ...(workspace.parentId ? { parentId: workspace.parentId } : {}),
