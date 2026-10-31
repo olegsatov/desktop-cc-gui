@@ -11,6 +11,9 @@ export interface AiChatThread {
   pinned?: boolean;
   /** A turn is streaming in this session — breathing blue dot unless retrying. */
   streaming?: boolean;
+  /** The session is stopped on the user (unanswered question, plan awaiting
+   *  approval, pending grant) — solid red dot, ahead of the running dot. */
+  waiting?: boolean;
   /** Provider backoff is active; keep the running dot visible but static. */
   retrying?: boolean;
   unseen?: boolean;

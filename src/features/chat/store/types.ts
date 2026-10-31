@@ -100,6 +100,10 @@ export interface ChatStore {
    *  看起来一样的会话。入口据此置灰成"进行中"。只管本窗口；跨客户端的并发由
    *  后端串行化（`fork_session_blocking`）。 */
   forkingByKey: Record<string, true>;
+  /** Flat sessionKey -> "stopped on the user" flag (sidebar red dot): an
+   * unanswered question, a plan awaiting approval, or a pending grant. Written
+   * only when the flag flips, same reason as streamingByKey. In-memory only. */
+  waitingByKey: Record<string, true>;
   /** Sessions with activity the user has not opened yet (sidebar green dot),
    * keyed `${engine}/${sessionId}` like the sidebar thread id. In-memory only. */
   unseen: Record<string, boolean>;

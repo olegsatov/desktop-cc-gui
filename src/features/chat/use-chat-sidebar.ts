@@ -26,6 +26,7 @@ export function useChatSidebar({
   sessionById,
   threadStreaming,
   threadRetrying,
+  threadWaiting,
   collapseSidebarOnMobile,
   composerInputRef,
   setDialog,
@@ -33,6 +34,8 @@ export function useChatSidebar({
   sessionById: Map<string, SessionMeta>;
   threadStreaming: boolean[];
   threadRetrying: boolean[];
+  /** Per-sidebar-thread "stopped on the user" flag (red dot). */
+  threadWaiting: boolean[];
   collapseSidebarOnMobile: () => void;
   composerInputRef: React.RefObject<ComposerInputHandle | null>;
   setDialog: (dialog: ChatPageDialog) => void;
@@ -113,9 +116,11 @@ export function useChatSidebar({
     });
     const streamingById = new Map<string, boolean>();
     const retryingById = new Map<string, boolean>();
+    const waitingById = new Map<string, boolean>();
     sessions.forEach((s, i) => {
       if (threadStreaming[i]) streamingById.set(`${s.engine}/${s.sessionId}`, true);
       if (threadRetrying[i]) retryingById.set(`${s.engine}/${s.sessionId}`, true);
+      if (threadWaiting[i]) waitingById.set(`${s.engine}/${s.sessionId}`, true);
     });
     const buildRepo = (w: Workspace, defaultOpen: boolean): AiChatRepo => {
       // Sidebar alias: a user-set name replaces the folder name in the
@@ -160,6 +165,7 @@ export function useChatSidebar({
                 pinned: s.pinned,
                 streaming: streamingById.get(`${s.engine}/${s.sessionId}`) ?? false,
                 retrying: retryingById.get(`${s.engine}/${s.sessionId}`) ?? false,
+                waiting: waitingById.get(`${s.engine}/${s.sessionId}`) ?? false,
                 unseen: unseen[`${s.engine}/${s.sessionId}`] ?? false,
               },
             ];
@@ -168,7 +174,7 @@ export function useChatSidebar({
       };
     };
     return parentWorkspaces.map((w) => buildRepo(w, w.id === firstWorkspace?.id));
-  }, [parentWorkspaces, childrenByParent, workspaceGroups, workspaceAliases, sessions, openTabs, threadLimit, threadStreaming, threadRetrying, unseen, i18n.language, uiHooks, t]);
+  }, [parentWorkspaces, childrenByParent, workspaceGroups, workspaceAliases, sessions, openTabs, threadLimit, threadStreaming, threadRetrying, threadWaiting, unseen, i18n.language, uiHooks, t]);
   // 工作区二级分类: bucket repos by their workspace's group assignment.
   // Ungrouped repos come first (no header), then groups in settings order.
   // Empty groups stay in the tree — the sidebar renders them like populated

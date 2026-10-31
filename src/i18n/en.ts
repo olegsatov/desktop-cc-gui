@@ -279,6 +279,7 @@ export const en: Messages = {
     backToBottom: "Back to bottom",
     sessionRunning: "Running",
     sessionUnseen: "Unread update",
+    sessionWaiting: "Waiting for your answer",
     engineNotInstalled: "Not installed or not on PATH",
     noEngineEnabled: "No CLI enabled — open settings",
     sendBlockedNoSession: "Start a session in the sidebar before sending",

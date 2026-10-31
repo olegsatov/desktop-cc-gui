@@ -56,6 +56,7 @@ import {
   type AskLoop,
 } from "./ask-loop";
 import { mergeUsage, parseUsage, reportedContextWindow, type ParsedUsage } from "../usage";
+import { waitingPatch } from "./waiting";
 import type {
   RegisteredInternalMessageCapture,
 } from "@/features/plugins/runtime/hooks";
@@ -1356,7 +1357,7 @@ export function patchGrantBySeq(
       return { ...m, grant: patch(m.grant) };
     });
     if (!changed) return {};
-    return { bySession: { ...s.bySession, [key]: { ...cur, messages } } };
+    return { bySession: { ...s.bySession, [key]: { ...cur, messages } }, ...waitingPatch(s, key, messages) };
   });
 }
 
@@ -1378,7 +1379,7 @@ export function patchQuestionByRequestId(
       return { ...m, question: patch(m.question) };
     });
     if (!changed) return {};
-    return { bySession: { ...s.bySession, [key]: { ...cur, messages } } };
+    return { bySession: { ...s.bySession, [key]: { ...cur, messages } }, ...waitingPatch(s, key, messages) };
   });
 }
 
@@ -1400,7 +1401,7 @@ export function patchQuestionBySeq(
       return { ...m, question: patch(m.question) };
     });
     if (!changed) return {};
-    return { bySession: { ...s.bySession, [key]: { ...cur, messages } } };
+    return { bySession: { ...s.bySession, [key]: { ...cur, messages } }, ...waitingPatch(s, key, messages) };
   });
 }
 
@@ -1450,24 +1451,23 @@ function onPermissionDenied(
     if (dup) return pending ? { bySession: { ...s.bySession, [key]: { ...cur, messages: base } } } : {};
     const seq = messages.length ? messages[messages.length - 1].seq + 1 : 1;
     rowSeq = seq;
+    const rows = [
+      ...messages,
+      {
+        role: "grant",
+        text: message,
+        path,
+        ts: new Date().toISOString(),
+        seq,
+        grant: { status: "pending" as const, toolUseId },
+      },
+    ];
     return {
       bySession: {
         ...s.bySession,
-        [key]: {
-          ...cur,
-          messages: [
-            ...messages,
-            {
-              role: "grant",
-              text: message,
-              path,
-              ts: new Date().toISOString(),
-              seq,
-              grant: { status: "pending" as const, toolUseId },
-            },
-          ],
-        },
+        [key]: { ...cur, messages: rows },
       },
+      ...waitingPatch(s, key, rows),
     };
   });
   // Preview the directory a grant would cover; failure is non-fatal — the
@@ -1570,34 +1570,33 @@ function onQuestion(
     if (dup) return pending ? { bySession: { ...s.bySession, [key]: { ...cur, messages: base } } } : {};
     const seq = messages.length ? messages[messages.length - 1].seq + 1 : 1;
     rowSeq = seq;
+    const rows = [
+      ...messages,
+      {
+        role: "question",
+        text: questions[0]?.question ?? "",
+        ts: new Date().toISOString(),
+        seq,
+        question: {
+          requestId,
+          runId: event.runId,
+          toolUseId: data.toolUseId ?? null,
+          // The CLI's runtime rows (free-form Other, done) are not the
+          // question's options: the card answers through the round.
+          questions:
+            rpc && questions.length === 1
+              ? [{ ...spec, multiSelect: multi, options: frame.options }]
+              : questions,
+          status: "pending" as const,
+        },
+      },
+    ];
     return {
       bySession: {
         ...s.bySession,
-        [key]: {
-          ...cur,
-          messages: [
-            ...messages,
-            {
-              role: "question",
-              text: questions[0]?.question ?? "",
-              ts: new Date().toISOString(),
-              seq,
-              question: {
-                requestId,
-                runId: event.runId,
-                toolUseId: data.toolUseId ?? null,
-                // The CLI's runtime rows (free-form Other, done) are not the
-                // question's options: the card answers through the round.
-                questions:
-                  rpc && questions.length === 1
-                    ? [{ ...spec, multiSelect: multi, options: frame.options }]
-                    : questions,
-                status: "pending" as const,
-              },
-            },
-          ],
-        },
+        [key]: { ...cur, messages: rows },
       },
+      ...waitingPatch(s, key, rows),
     };
   });
   if (rowSeq > 0 && rpc && multi) {
@@ -1630,7 +1629,10 @@ function updatePlanMessages(
       : cur.messages;
     const next = transform(settleLiveRows(base));
     if (!next) return {};
-    return { bySession: { ...s.bySession, [key]: { ...cur, messages: next } } };
+    return {
+      bySession: { ...s.bySession, [key]: { ...cur, messages: next } },
+      ...waitingPatch(s, key, next),
+    };
   });
 }
 

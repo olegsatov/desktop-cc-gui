@@ -145,10 +145,12 @@ export function createWorkspaceActions(
             const bySession = { ...s.bySession };
             const drafts = { ...s.drafts };
             const unseen = { ...s.unseen };
+            const waitingByKey = { ...s.waitingByKey };
             for (const key of dead) {
               delete bySession[key];
               delete drafts[key];
               delete unseen[key];
+              delete waitingByKey[key];
             }
             return {
               bySession,
@@ -158,6 +160,7 @@ export function createWorkspaceActions(
                 s.composerAttachments,
                 dead,
               ),
+              waitingByKey,
             };
           });
         }

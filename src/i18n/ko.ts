@@ -247,6 +247,7 @@ export const ko: Messages = {
     backToBottom: "맨 아래로",
     sessionRunning: "실행 중",
     sessionUnseen: "읽지 않은 업데이트",
+    sessionWaiting: "답변을 기다리는 중",
     engineNotInstalled: "설치되지 않았거나 PATH에 없음",
     noEngineEnabled: "활성화된 CLI 없음 — 설정 열기",
     sendBlockedNoSession: "보내기 전에 사이드바에서 세션을 시작하세요",

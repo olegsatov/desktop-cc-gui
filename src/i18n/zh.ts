@@ -404,6 +404,7 @@ export const zh = {
     showFewerSessions: "收起",
     sessionRunning: "进行中",
     sessionUnseen: "未读更新",
+    sessionWaiting: "等待你的回答",
     metaDuration: "耗时 {{duration}}",
     metaModel: "模型 {{model}}",
     metaEffort: "推理档位 {{effort}}",

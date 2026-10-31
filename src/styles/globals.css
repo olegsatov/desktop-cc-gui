@@ -304,6 +304,12 @@ input[type="search"]::-webkit-search-cancel-button {
 .sidebar-thread-status-unseen {
   background: var(--color-status-unseen);
 }
+/* The session is stopped on the user (question / plan approval / grant): a
+ * solid red dot that outranks the breathing running dot — the turn is still
+ * alive while the CLI waits, so the blue dot would otherwise hide this. */
+.sidebar-thread-status-waiting {
+  background: var(--color-status-waiting);
+}
 @keyframes sidebar-thread-status-heartbeat {
   0%,
   100% {

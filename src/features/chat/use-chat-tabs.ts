@@ -56,6 +56,9 @@ export interface UseChatTabsResult {
   sessionById: Map<string, SessionMeta>;
   threadStreaming: boolean[];
   threadRetrying: boolean[];
+  /** Per-sidebar-thread "stopped on the user" flag (red dot): an unanswered
+   *  question, a plan awaiting approval, or a pending grant. */
+  threadWaiting: boolean[];
   openFiles: string[];
   activeFilePath: string | null;
   browserTabs: BrowserTab[];
@@ -82,12 +85,13 @@ export function useChatTabs({
   setDialog: (dialog: ChatPageDialog) => void;
 }): UseChatTabsResult {
   const { t } = useTranslation();
-  const { active, openTabs, sessions, unseen } = useChatStore(
+  const { active, openTabs, sessions, unseen, waitingByKey } = useChatStore(
     useShallow((s) => ({
       active: s.active,
       openTabs: s.openTabs,
       sessions: s.sessions,
       unseen: s.unseen,
+      waitingByKey: s.waitingByKey,
     })),
   );
   const { focusTab, closeTab, moveTab } = useChatStore(
@@ -198,6 +202,16 @@ export function useChatTabs({
           retryingByKey[sessionKey(sess.engine, sess.sessionId, sess.workspacePath)] === true,
       ),
     [sessions, retryingByKey],
+  );
+  // Sidebar red dot: the session is stopped on the user. Reference-stable for
+  // the same reason as the two flags above.
+  const threadWaiting = useMemo(
+    () =>
+      sessions.map(
+        (sess) =>
+          waitingByKey[sessionKey(sess.engine, sess.sessionId, sess.workspacePath)] === true,
+      ),
+    [sessions, waitingByKey],
   );
 
   const sessionById = useMemo(() => {
@@ -408,6 +422,7 @@ export function useChatTabs({
     sessionById,
     threadStreaming,
     threadRetrying,
+    threadWaiting,
     openFiles,
     activeFilePath,
     // Hidden beta surfaces report empty/inactive so ChatCenterPane unmounts

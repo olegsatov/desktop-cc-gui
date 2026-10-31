@@ -88,6 +88,8 @@ describe("permission denial grant flow", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].path).toBe("/data/secrets/key.pem");
     expect(rows[0].grant?.status).toBe("pending");
+    // Sidebar red dot: the run is stopped until the user decides.
+    expect(useChatStore.getState().waitingByKey[KEY]).toBe(true);
     // grant_scope preview fills in the directory asynchronously.
     await vi.waitFor(() =>
       expect(grantRows()[0].grant?.dir).toBe("/data"),
@@ -108,6 +110,7 @@ describe("permission denial grant flow", () => {
     await useChatStore.getState().respondToGrant(KEY, seq, true);
     expect(vi.mocked(ipc.grantRoot)).toHaveBeenCalledWith("/data/x");
     expect(grantRows()[0].grant?.status).toBe("granted");
+    expect(useChatStore.getState().waitingByKey[KEY]).toBeUndefined();
   });
 
   it("decline marks the card without touching the backend", async () => {
@@ -116,6 +119,7 @@ describe("permission denial grant flow", () => {
     await useChatStore.getState().respondToGrant(KEY, seq, false);
     expect(vi.mocked(ipc.grantRoot)).not.toHaveBeenCalled();
     expect(grantRows()[0].grant?.status).toBe("declined");
+    expect(useChatStore.getState().waitingByKey[KEY]).toBeUndefined();
     // A declined card must not block a fresh card for the same path.
     handleEngineEvents([denialEvent("/data/x")], deps());
     expect(grantRows()).toHaveLength(2);

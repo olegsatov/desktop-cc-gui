@@ -112,6 +112,8 @@ describe("ask-user-question flow", () => {
     expect(rows[0].question?.requestId).toBe("req-1");
     expect(rows[0].question?.runId).toBe("run-1");
     expect(rows[0].question?.questions[0].options).toHaveLength(2);
+    // Sidebar red dot: the session is stopped on the user.
+    expect(useChatStore.getState().waitingByKey[KEY]).toBe(true);
   });
 
   it("replayed frames for the same request id collapse into one card", () => {
@@ -130,6 +132,7 @@ describe("ask-user-question flow", () => {
     });
     expect(cardRows()[0].question?.status).toBe("answered");
     expect(cardRows()[0].question?.answers).toEqual({ [QUESTION_TEXT]: "B" });
+    expect(useChatStore.getState().waitingByKey[KEY]).toBeUndefined();
   });
 
   it("skipping sends null and records no answer", async () => {
@@ -145,6 +148,7 @@ describe("ask-user-question flow", () => {
     handleEngineEvents([questionEvent()], deps());
     handleEngineEvents([settledEvent()], deps());
     expect(cardRows()[0].question?.status).toBe("cancelled");
+    expect(useChatStore.getState().waitingByKey[KEY]).toBeUndefined();
   });
 });
 

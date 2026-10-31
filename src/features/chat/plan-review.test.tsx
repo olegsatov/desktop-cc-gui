@@ -221,6 +221,8 @@ describe("plan review events → store", () => {
     expect(rows[0].planReview?.revision).toBe(1);
     expect(rows[0].planReview?.complete).toBe(true);
     expect(rows[0].planReview?.execPermission).toBe("manual");
+    // Sidebar red dot: an open plan is the user's decision to make.
+    expect(useChatStore.getState().waitingByKey[KEY]).toBe(true);
   });
 
   it("a newer revision supersedes the still-open older one", () => {
@@ -243,6 +245,7 @@ describe("plan review events → store", () => {
     const rows = planRows();
     expect(rows).toHaveLength(1);
     expect(rows[0].planReview?.status).toBe("expired");
+    expect(useChatStore.getState().waitingByKey[KEY]).toBeUndefined();
   });
 
   it("a late duplicate plan_review never resurrects a terminal record", () => {

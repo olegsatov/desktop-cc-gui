@@ -25,18 +25,33 @@ import { useDragSource } from "@/features/chat/split/drag";
 import { sessionFromThreadId } from "@/features/chat/split/store";
 import { cx } from "@/utils/cx";
 
-/** Streaming/unseen status dot on a thread row; renders nothing when the
- *  thread is neither streaming nor waiting to be seen. */
+/** Streaming/unseen/stopped-on-you status dot on a thread row; renders nothing
+ *  when the thread is none of those. "Stopped on you" wins: while the CLI waits
+ *  for an answer the turn is still technically alive, so the blue running dot
+ *  would otherwise hide the red one. */
 function ThreadStatusDot({
   streaming,
   retrying,
   unseen,
+  waiting = false,
 }: {
   streaming: boolean;
   retrying: boolean;
   unseen: boolean;
+  /** The session is waiting for the user: question, plan approval, or grant. */
+  waiting?: boolean;
 }) {
   const { t } = useTranslation();
+  if (waiting) {
+    return (
+      <span
+        className="sidebar-thread-status sidebar-thread-status-waiting"
+        role="status"
+        aria-label={t("chat.sessionWaiting")}
+        title={t("chat.sessionWaiting")}
+      />
+    );
+  }
   if (streaming) {
     return (
       <span
@@ -151,6 +166,7 @@ function ThreadItem({
   streaming = false,
   retrying = false,
   unseen = false,
+  waiting = false,
   isDraft = false,
   tabIndex,
   onSelect,
@@ -198,7 +214,7 @@ function ThreadItem({
             className="size-3 shrink-0 text-foreground-icon-secondary"
           />
         )}
-        <ThreadStatusDot streaming={streaming} retrying={retrying} unseen={unseen} />
+        <ThreadStatusDot streaming={streaming} retrying={retrying} unseen={unseen} waiting={waiting} />
         {/* Native title tooltip: hover a moment to read the full title when
             the row truncates it (same pattern as the repo row below). */}
         <span
@@ -462,6 +478,8 @@ function WorktreeChildRow({
   // 话行 / 页签同一套 `sidebar-thread-status` 视觉语言。更深的 worktree
   // 子级会话一并计入。
   const { running, retrying } = aggregateRunState(repo);
+  // A waiting thread under a collapsed worktree row still has to be visible.
+  const waiting = repo.threads.some((th) => th.waiting);
   return (
     <div
       onContextMenu={onContextMenu}
@@ -486,8 +504,8 @@ function WorktreeChildRow({
           )}
         />
         <GitBranch aria-hidden className="size-3.5 shrink-0 text-foreground-icon-tertiary" />
-        {!expanded && running && (
-          <ThreadStatusDot streaming retrying={retrying} unseen={false} />
+        {!expanded && (waiting || running) && (
+          <ThreadStatusDot streaming={running} retrying={retrying} unseen={false} waiting={waiting} />
         )}
         <span className="min-w-0 flex-1 truncate text-body-2-medium text-text-secondary">
           {repo.label}

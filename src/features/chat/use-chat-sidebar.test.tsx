@@ -80,10 +80,12 @@ let sidebar: ReturnType<typeof useChatSidebar>;
 function Harness() {
   const streaming = useChatStore((s) => s.streamingByKey["codex/s-1"] === true);
   const retrying = useChatStore((s) => s.retryingByKey["codex/s-1"] === true);
+  const waiting = useChatStore((s) => s.waitingByKey["codex/s-1"] === true);
   sidebar = useChatSidebar({
     sessionById: new Map(),
     threadStreaming: [streaming],
     threadRetrying: [retrying],
+    threadWaiting: [waiting],
     collapseSidebarOnMobile: () => {},
     composerInputRef: { current: null },
     setDialog: () => {},
@@ -104,6 +106,7 @@ describe("useChatSidebar repo mapping", () => {
       archivedWorkspaces: [],
       retryingByKey: {},
       streamingByKey: {},
+      waitingByKey: {},
     });
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -264,6 +267,14 @@ describe("useChatSidebar repo mapping", () => {
       streaming: true,
       retrying: true,
     });
+  });
+
+  it("maps the stopped-on-the-user flag to the matching sidebar thread", async () => {
+    await act(async () => {
+      useChatStore.setState({ waitingByKey: { "codex/s-1": true } });
+    });
+
+    expect(captured[0]?.threads[0]).toMatchObject({ waiting: true });
   });
 });
 

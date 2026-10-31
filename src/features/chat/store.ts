@@ -194,6 +194,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
     streamingByKey: {},
     retryingByKey: {},
     forkingByKey: {},
+    waitingByKey: {},
     unseen: {},
     drafts: {},
     composerAttachments: NO_COMPOSER_ATTACHMENTS,

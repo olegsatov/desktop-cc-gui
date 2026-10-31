@@ -289,12 +289,14 @@ export function createSessionActions(
         const unseen = { ...s.unseen };
         const streamingByKey = { ...s.streamingByKey };
         const retryingByKey = { ...s.retryingByKey };
+        const waitingByKey = { ...s.waitingByKey };
         for (const key of Object.keys(archivedSessionKeys)) {
           delete bySession[key];
           delete drafts[key];
           delete unseen[key];
           delete streamingByKey[key];
           delete retryingByKey[key];
+          delete waitingByKey[key];
         }
         // Composer attachments die with their session, same as the draft
         // above: a hidden conversation must not keep a picture (and its
@@ -339,6 +341,7 @@ export function createSessionActions(
           streamingByKey,
           retryingByKey,
           composerAttachments,
+          waitingByKey,
           openTabs,
           active,
         };

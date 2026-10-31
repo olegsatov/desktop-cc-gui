@@ -261,9 +261,11 @@
   --color-effort-flame-wash: rgb(16 24 40 / 0.62);
 
   /* Sidebar session status dots (globals.css .sidebar-thread-status-*):
-   * breathing blue while a turn streams, solid green for unseen activity. */
+   * breathing blue while a turn streams, solid green for unseen activity,
+   * solid red while the session waits for the user's answer. */
   --color-status-streaming: #2f80ed;
   --color-status-unseen:    var(--color-green-500);
+  --color-status-waiting:   var(--color-red-500);
 
   /* Border */
   --color-border-button-default:   var(--color-neutral-200);
@@ -403,6 +405,7 @@
   /* Sidebar status dots read brighter against the dark canvas. */
   --color-status-streaming: var(--color-blue-400);
   --color-status-unseen:    var(--color-green-400);
+  --color-status-waiting:   var(--color-red-400);
 
   /* Foreground */
   --color-foreground-full:            var(--color-neutral-700);

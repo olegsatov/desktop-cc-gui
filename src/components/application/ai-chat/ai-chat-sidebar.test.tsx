@@ -234,6 +234,33 @@ it("renders a retrying streaming thread with a static status dot", async () => {
   expect(dot?.classList.contains("sidebar-thread-status-retrying")).toBe(true);
 });
 
+it("marks a session stopped on the user with a red dot that outranks the running dot", async () => {
+  await act(async () => {
+    root.render(
+      <AiChatSidebar
+        repos={[{
+          id: "a",
+          label: "a",
+          defaultOpen: true,
+          threads: [{
+            // The CLI keeps the run alive while it waits for an answer, so a
+            // waiting thread is streaming too: red has to win.
+            id: "claude/wait-1",
+            label: "等待回答",
+            time: "刚刚",
+            streaming: true,
+            waiting: true,
+          }],
+        }]}
+      />,
+    );
+  });
+
+  const dot = threadRow("等待回答").querySelector(".sidebar-thread-status");
+  expect(dot?.classList.contains("sidebar-thread-status-waiting")).toBe(true);
+  expect(dot?.classList.contains("sidebar-thread-status-processing")).toBe(false);
+});
+
 it("keeps hover actions to pin / rename / delete (archive is context-menu only)", async () => {
   const onThreadAction = vi.fn();
   await act(async () => {
