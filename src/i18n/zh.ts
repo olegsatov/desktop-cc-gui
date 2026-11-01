@@ -1708,6 +1708,7 @@ export const zh = {
       permissions: {
         storage: "本地存储",
         events: "监听会话事件",
+        notify: "发送系统通知",
         theme: "读写主题",
         i18n: "读取语言设置",
         agent: "运行插件智能体",

@@ -16,6 +16,7 @@ export interface PermissionDescription {
 const BASE_LABELS: Record<string, string> = {
   storage: "storage",
   events: "events",
+  notify: "notify",
   theme: "theme",
   i18n: "i18n",
   agent: "agent",

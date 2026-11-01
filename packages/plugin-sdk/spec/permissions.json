@@ -23,6 +23,7 @@
     "theme",
     "i18n",
     "events",
+    "notify",
     "network:none",
     "composer:draft",
     "host:session",

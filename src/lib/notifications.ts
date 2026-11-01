@@ -191,6 +191,31 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   }
 }
 
+/** 插件请宿主显示的系统通知（桥命令 `plugin_notify`，权限 `notify`）。
+ *
+ *  与内建通知同一条路：尊重应用「通知」总开关与系统权限，点击时把应用带
+ *  到前面；给了会话编号就打开那次会话（调度任务在未注册项目里的会话也能
+ *  打开——`openPluginSession`）。返回是否真的投递，插件可以据此决定要不要
+ *  换别的办法。 */
+export async function notifyFromPlugin(options: {
+  title: string;
+  body?: string;
+  engine?: string;
+  sessionId?: string;
+  workspacePath?: string;
+}): Promise<boolean> {
+  const key =
+    options.engine && options.sessionId
+      ? sessionKey(options.engine, options.sessionId, options.workspacePath ?? "")
+      : undefined;
+  return sendOSNotification({
+    title: options.title,
+    body: options.body,
+    sessionKey: key,
+    tag: key ? `plugin-${key}` : "plugin-notify",
+  });
+}
+
 /**
  * 将 CC GUI 应用窗口唤醒并置顶聚焦。
  */

@@ -1049,6 +1049,12 @@ export interface PluginContext {
      *    附属进程，宿主跟踪，插件禁用/卸载时自动 kill。
      *  - `plugin_exec_kill` `{}` → `{ killed: number }`：kill 本插件全部
      *    lifecycle="plugin" 子进程（配置变更改名重启用；需任意 exec: 授权）。
+     *  - `plugin_notify` `{ title, body?, engine?, sessionId?, workspacePath? }`
+     *    → `boolean`（是否真的投递）：请宿主显示一条系统通知（权限
+     *    `notify`）。与内建通知同一条路——应用「通知」总开关关掉或系统未授权
+     *    时不投递（返回 false，不报错）；给了 engine + sessionId，点击通知会
+     *    把应用带到前面并打开那次会话。标题必填（1..200 字符），正文
+     *    500 字符内，过长会被截断。
      *
      *  授权未命中的调用在 JS 侧即 reject（不打 IPC）；Rust 侧对授权与插件
      *  启用态另有强制（纵深防御）。 */

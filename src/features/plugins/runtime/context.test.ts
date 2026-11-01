@@ -37,6 +37,9 @@ import { worktreeBadgeStore } from "./worktree-badges";
 // composer.setDraft 的 store 落点由 composer-draft.test.ts 单独覆盖；
 // 这里只验证权限门与委派，不拉入 chat store 依赖链。
 vi.mock("./composer-draft", () => ({ setActiveComposerDraft: vi.fn() }));
+// plugin_notify 的宿主实现在 @/lib/notifications（拉入聊天 store 与 Tauri
+// 通知插件），这里只验证权限门与参数整理。
+vi.mock("@/lib/notifications", () => ({ notifyFromPlugin: vi.fn(async () => true) }));
 // worktrees.create 的宿主实现（worktree-bridge）依赖 worktree/chat store，
 // 这里同样只验证权限门与委派，桥本身由 worktree-bridge.test.ts 覆盖。
 vi.mock("./worktree-bridge", () => ({ createPluginWorktree: vi.fn(async () => ({ worktreePath: "/x" })) }));
@@ -981,6 +984,49 @@ describe("createPluginContext", () => {
   });
 
   describe("bridge.invoke grant prechecks", () => {
+    it("rejects plugin_notify without the notify permission, without posting", async () => {
+      const backend = fakeStorage();
+      const notifications = await import("@/lib/notifications");
+      const { ctx } = createPluginContext(manifest(["events"]), backend, { appVersion: "1.0.0" });
+      await expect(
+        ctx.bridge.invoke("plugin_notify", { title: "Задача выполнена", body: "отчёт" }),
+      ).rejects.toThrow(/notify/);
+      expect(notifications.notifyFromPlugin).not.toHaveBeenCalled();
+      expect(backend.bridgeInvoke).not.toHaveBeenCalled();
+    });
+
+    it("rejects plugin_notify with an empty title", async () => {
+      const { ctx } = createPluginContext(manifest(["notify"]), fakeStorage(), {
+        appVersion: "1.0.0",
+      });
+      await expect(ctx.bridge.invoke("plugin_notify", { title: "   " })).rejects.toThrow(
+        /title/,
+      );
+    });
+
+    it("posts a granted plugin_notify and hands the session key to the host", async () => {
+      const backend = fakeStorage();
+      const notifications = await import("@/lib/notifications");
+      const { ctx } = createPluginContext(manifest(["notify"]), backend, { appVersion: "1.0.0" });
+      const posted = await ctx.bridge.invoke("plugin_notify", {
+        title: "Задача запущена",
+        body: "Дюна 3 · проект",
+        engine: "pi",
+        sessionId: "sess-1",
+        workspacePath: "C:/work",
+      });
+      expect(posted).toBe(true);
+      expect(notifications.notifyFromPlugin).toHaveBeenCalledWith({
+        title: "Задача запущена",
+        body: "Дюна 3 · проект",
+        engine: "pi",
+        sessionId: "sess-1",
+        workspacePath: "C:/work",
+      });
+      // 发通知的是应用自己的代码，不走 IPC。
+      expect(backend.bridgeInvoke).not.toHaveBeenCalled();
+    });
+
     it("rejects plugin_http_request to a url with no matching network: grant, without IPC", async () => {
       const backend = fakeStorage();
       const { ctx } = createPluginContext(manifest([]), backend, { appVersion: "1.0.0" });

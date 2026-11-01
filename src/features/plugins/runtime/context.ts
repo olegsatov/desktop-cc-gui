@@ -1,5 +1,6 @@
 import * as React from "react";
 import i18n from "@/lib/i18n";
+import { notifyFromPlugin } from "@/lib/notifications";
 import { isWeb } from "@/lib/transport";
 import {
   SDK_VERSION,
@@ -906,10 +907,33 @@ export function createPluginContext(
               new Error(`[plugins] "${id}" used ${command} without declaring "agent" in permissions`),
             );
           }
+        } else if (command === "plugin_notify") {
+          // 插件请宿主显示系统通知（权限 `notify`）：走应用自己的通知通道，
+          // 与内建通知共用总开关、系统权限与点击跳转。本命令在宿主侧处理，
+          // 不走 IPC（发通知的是应用自己的代码）。
+          if (!manifest.permissions.includes("notify")) {
+            return Promise.reject(
+              new Error(`[plugins] "${id}" used plugin_notify without declaring "notify" in permissions`),
+            );
+          }
+          const title =
+            typeof hostArgs.title === "string" ? hostArgs.title.trim().slice(0, 200) : "";
+          if (!title) {
+            return Promise.reject(new Error("[plugins] plugin_notify needs a non-empty title"));
+          }
+          const optional = (value: unknown, max: number): string | undefined =>
+            typeof value === "string" && value ? value.slice(0, max) : undefined;
+          return notifyFromPlugin({
+            title,
+            body: optional(hostArgs.body, 500),
+            engine: optional(hostArgs.engine, 200),
+            sessionId: optional(hostArgs.sessionId, 200),
+            workspacePath: optional(hostArgs.workspacePath, 4096),
+          }) as Promise<T>;
         } else {
           return Promise.reject(
             new Error(
-              `[plugins] unknown bridge command "${command}" (available: plugin_http_request / plugin_exec_run / plugin_exec_spawn / plugin_exec_kill / plugin_agent_start / plugin_agent_interrupt)`,
+              `[plugins] unknown bridge command "${command}" (available: plugin_http_request / plugin_exec_run / plugin_exec_spawn / plugin_exec_kill / plugin_agent_start / plugin_agent_interrupt / plugin_notify)`,
             ),
           );
         }

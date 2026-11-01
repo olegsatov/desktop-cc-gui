@@ -1777,6 +1777,7 @@ export const en: Messages = {
       permissions: {
         storage: "Local storage",
         events: "Session events",
+        notify: "Show system notifications",
         theme: "Read and write the theme",
         i18n: "Read language settings",
         agent: "Run plugin agents",

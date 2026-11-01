@@ -1648,6 +1648,7 @@ export const ko: Messages = {
       permissions: {
         storage: "로컬 저장소",
         events: "세션 이벤트",
+        notify: "시스템 알림 표시",
         theme: "테마 읽기 및 쓰기",
         i18n: "언어 설정 읽기",
         agent: "플러그인 에이전트 실행",
