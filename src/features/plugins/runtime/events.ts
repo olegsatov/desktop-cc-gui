@@ -34,6 +34,15 @@ export const SESSION_ACTIVATED_TOPIC = "session://activated";
  *  activation event is the baseline, this one keeps it current. */
 export const SESSION_SELECTION_CHANGED_TOPIC = "session://selection-changed";
 
+/** Sidebar-style session live state (host → plugin): `{ sessions: [{ key,
+ *  engine, sessionId, workspacePath, state }] }`, `state` being "running"
+ *  (the turn streams), "waiting" (stopped on the user) or "unseen" (finished
+ *  and never opened since). Only sessions in a non-idle state are listed, and
+ *  the payload is the whole picture rather than one flip — a plugin panel
+ *  that shows task runs can render the same dots the sidebar does, including
+ *  a session the user took over by hand. */
+export const SESSION_STATE_TOPIC = "session://state";
+
 /** What the active session runs: the selected channel (null = the engine's
  *  own settings) and the model selector the picker spells (null = CLI default). */
 export interface SessionSelection {
@@ -58,7 +67,7 @@ export const COMPOSER_DRAFT_TOPIC = "composer://draft";
  * payload, so a plugin that loads after a model/channel switch still replays
  * the current selection rather than the activation-time one.
  */
-const RETAINED_TOPICS = new Set<string>([SESSION_ACTIVATED_TOPIC]);
+const RETAINED_TOPICS = new Set<string>([SESSION_ACTIVATED_TOPIC, SESSION_STATE_TOPIC]);
 const retained = new Map<string, unknown>();
 
 const listeners = new Map<string, Set<Listener>>();

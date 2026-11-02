@@ -28,8 +28,8 @@ export interface SessionAttentionPayload {
 
 /** 会话 key → 引擎 / 原生编号 / 工作区：key 自己带着前两项，工作区要从
  *  打开着的页签或会话表中找（`session://attention` 的消费者需要人读的
- *  项目名）。 */
-function resolveTarget(
+ *  项目名）。`session://state` 用同一套解析，导出给那边复用。 */
+export function resolveSessionTarget(
   state: ChatStore,
   key: string,
 ): { engine: string; sessionId: string | null; workspacePath: string } | null {
@@ -63,7 +63,7 @@ function watchWaiting(state: ChatStore): void {
     if (before === now) continue;
     if (now) lastWaiting.set(key, true);
     else lastWaiting.delete(key);
-    const target = resolveTarget(state, key);
+    const target = resolveSessionTarget(state, key);
     if (!target) continue;
     const payload: SessionAttentionPayload = { key, ...target, waiting: now };
     pluginBus.emit(SESSION_ATTENTION_TOPIC, payload);
