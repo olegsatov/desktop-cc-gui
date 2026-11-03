@@ -512,6 +512,32 @@ describe("ProcessDisclosure workspace fold", () => {
     expect(container.textContent).toContain("先分析需求，再看仓库");
   });
 
+  it("dims the folded summary so it does not compete with the answer text", async () => {
+    const items = tools(2);
+    const summary = () => {
+      // Подпись — тот span, у которого есть значок и который не является
+      // строкой шага; ищем по тексту в самом элементе (без детей).
+      const label = [...container.querySelectorAll("span")].find(
+        (el) => el.children.length === 0 && (el.textContent ?? "").includes("工具调用"),
+      );
+      return label?.className ?? "";
+    };
+    await render(items, { collapsedByDefault: true });
+    expect(headerExpanded()).toBe(false);
+    expect(summary()).toContain("opacity-45");
+
+    // Раскрытая строка — обычная: читать уже начали.
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>("button[aria-expanded]")!.click(),
+    );
+    expect(headerExpanded()).toBe(true);
+    expect(summary()).not.toContain("opacity-45");
+
+    // Без свёрнутого режима строка тоже обычная — как было до этой правки.
+    await render(items, { collapsedByDefault: false });
+    expect(summary()).not.toContain("opacity-45");
+  });
+
   it("does not reopen a thinking pause or the settled tail", async () => {
     await render([{ type: "thinking", text: "先分析需求", live: true }], {
       turnLive: true,

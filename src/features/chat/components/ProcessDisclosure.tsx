@@ -602,11 +602,22 @@ export const ProcessDisclosure = memo(function ProcessDisclosure({
         type="button"
         aria-expanded={expanded}
         onClick={toggleExpanded}
-        className="flex w-full cursor-pointer flex-col text-left"
+        className="group flex w-full cursor-pointer flex-col text-left"
       >
         <span className="flex items-center gap-1 py-0.5 text-body-regular text-text-secondary transition-colors hover:text-text-primary">
           {singleThinking && <Brain className="size-3.5" aria-hidden />}
-          {label}
+          {/* Свёрнутая строка не конкурирует с текстом ответа — в свёрнутом режиме
+              (кнопка слева от счётчика) она тише сама; при наведении вся строка
+              возвращается к обычному серому. Открытая строка остаётся обычной:
+              это уже прочитанное. */}
+          <span
+            className={cx(
+              "transition-opacity duration-150",
+              collapsedByDefault && !expanded ? "opacity-45 group-hover:opacity-100" : undefined,
+            )}
+          >
+            {label}
+          </span>
           <ChevronRight
             className={cx("size-3.5 transition-transform duration-200", expanded && "rotate-90")}
             aria-hidden
