@@ -1,6 +1,6 @@
 /**
  * Data behind the project overview: sessions, git repositories, to-dos,
- * schedules, installed skills and the project's memory files.
+ * schedules, the project's own skills and its memory files.
  *
  * Everything but the memory files comes from host IPC. The memory files are
  * read through `git ls-files` / `git status` (the host has no directory
@@ -10,7 +10,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ipc, type RepositorySummary, type SessionMeta } from "@/lib/ipc";
-import { cachedInstalledSkills } from "@/features/skills/api";
 
 /** One row of the agreements file, already stripped of markdown noise. */
 export interface RuleLine {
@@ -58,8 +57,8 @@ export interface ProjectOverviewData {
   memory: MemoryFile[];
   todos: { items: TodoRow[]; left: number };
   tasks: TaskRow[];
-  skills: string[];
-  skillsOwn: string[];
+  /** Навыки в папках самого проекта: имя и папка, откуда он. */
+  skills: { name: string; root: string }[];
   /** One entry per overview block, plus `sessions` for the cover chip.
    *  «Дела и расписания» is a single block (`work`); its two columns still
    *  count separately in `todos.left` / `tasks.length`. */
@@ -79,7 +78,6 @@ const EMPTY: ProjectOverviewData = {
   todos: { items: [], left: 0 },
   tasks: [],
   skills: [],
-  skillsOwn: [],
   counts: { rules: 0, memory: 0, work: 0, skills: 0, repos: 0, sessions: 0 },
 };
 
@@ -169,26 +167,34 @@ async function listMemoryFiles(
     .sort((a, b) => a.path.localeCompare(b.path));
 }
 
-/** Skills the hub lists as installed, plus the project's own folder when it
- *  keeps skills locally (`.claude/skills/<name>`). */
-async function installedSkills(root: string): Promise<{ all: string[]; own: string[] }> {
-  const all = new Set<string>();
-  const own = new Set<string>();
-  try {
-    const result = await cachedInstalledSkills();
-    for (const skill of result?.skills ?? []) {
-      if (skill?.name) all.add(skill.name);
+/** Папки навыков **проекта** (относительно его корня), в порядке старшинства.
+ *  Тот же список, что приложение обходит для подсказок в поле ввода —
+ *  `src-tauri/src/slash_commands.rs`, `WORKSPACE_SKILL_SUBPATHS`. Общий набор
+ *  машины в обзор намеренно не идёт (просьба владельца 03.11.2026). */
+const PROJECT_SKILL_DIRS = [
+  ".claude/skills",
+  ".agents/skills",
+  ".codex/skills",
+  ".skills",
+  "skills",
+  ".agent/skills",
+  ".cursor/skills",
+  ".github/skills",
+];
+
+/** Навыки в папках проекта: имя и откуда оно. */
+async function projectSkills(root: string): Promise<{ name: string; root: string }[]> {
+  const out: { name: string; root: string }[] = [];
+  const seen = new Set<string>();
+  for (const dir of PROJECT_SKILL_DIRS) {
+    const entries = await ipc.listDir(`${root}/${dir}`).catch(() => []);
+    for (const entry of entries) {
+      if (!entry.isDir || seen.has(entry.name)) continue;
+      seen.add(entry.name);
+      out.push({ name: entry.name, root: dir });
     }
-  } catch {
-    /* hub unavailable (offline, first run) — the block simply shows less */
   }
-  const local = await ipc.listDir(`${root}/.claude/skills`).catch(() => []);
-  for (const entry of local) {
-    if (!entry.isDir) continue;
-    own.add(entry.name);
-    all.add(entry.name);
-  }
-  return { all: [...all].sort(), own: [...own].sort() };
+  return out;
 }
 
 export function useProjectOverview(workspacePath: string): ProjectOverviewData {
@@ -202,7 +208,7 @@ export function useProjectOverview(workspacePath: string): ProjectOverviewData {
         const [workspaces, sessions, skills] = await Promise.all([
           ipc.listWorkspaces(),
           ipc.listSessions(),
-          installedSkills(workspacePath),
+          projectSkills(workspacePath),
         ]);
         if (signal.cancelled) return;
         const workspace = workspaces.find((row) => row.path === workspacePath);
@@ -261,13 +267,12 @@ export function useProjectOverview(workspacePath: string): ProjectOverviewData {
           memory: memory.map((file) => ({ path: file.path, summary: summarise(file.content) })),
           todos: todoRows,
           tasks: taskRows,
-          skills: skills.all,
-          skillsOwn: skills.own,
+          skills,
           counts: {
             rules: lines.length,
             memory: memory.length,
             work: todoRows.left + taskRows.length,
-            skills: skills.all.length,
+            skills: skills.length,
             repos: repoRows.length,
             sessions: mine.length,
           },

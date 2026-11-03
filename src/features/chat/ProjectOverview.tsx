@@ -42,7 +42,7 @@ const BLOCKS: readonly BlockDef[] = [
   { id: "rules", title: "Правила проекта" },
   { id: "memory", title: "Договорённости и разборы" },
   { id: "work", title: "Дела и расписания" },
-  { id: "skills", title: "Навыки" },
+  { id: "skills", title: "Навыки проекта", optional: true },
   { id: "repos", title: "Репозитории", optional: true },
 ];
 
@@ -418,20 +418,19 @@ function BlockBody({
       );
     }
     case "skills": {
-      if (!data.skills.length) return <Empty text="Навыков не найдено." />;
+      if (!data.skills.length) return <Empty text="Проектных навыков нет." />;
+      const roots = [...new Set(data.skills.map((skill) => skill.root))];
       return (
         <>
           <div className="flex flex-wrap gap-1.5">
             {data.skills.map((skill) => (
-              <span key={skill} className="overview-skill" title={skill}>
-                {skill}
+              <span key={skill.name} className="overview-skill" title={`${skill.root}/${skill.name}`}>
+                {skill.name}
               </span>
             ))}
           </div>
           <p className="overview-foot">
-            {data.skillsOwn.length > 0
-              ? `Проектных: ${data.skillsOwn.join(", ")}`
-              : "Проектных навыков нет — это общий набор машины."}
+            Из папок проекта: {roots.join(", ")}
           </p>
         </>
       );
