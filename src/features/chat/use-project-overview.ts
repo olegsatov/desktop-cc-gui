@@ -172,6 +172,10 @@ async function listMemoryFiles(
  *  `src-tauri/src/slash_commands.rs`, `WORKSPACE_SKILL_SUBPATHS`. Общий набор
  *  машины в обзор намеренно не идёт (просьба владельца 03.11.2026). */
 const PROJECT_SKILL_DIRS = [
+  // pi-bolt: скиллы проекта (наша договорённость — новый навык кладётся в
+  // `<проект>/.pi/skills/<имя>/SKILL.md`; у приложения этого пути в списке нет,
+  // а у владельца все проектные навыки лежат именно здесь).
+  ".pi/skills",
   ".claude/skills",
   ".agents/skills",
   ".codex/skills",
