@@ -36,12 +36,29 @@ afterEach(async () => {
   node.remove();
 });
 
-/** The row body is the toggle button carrying aria-expanded + the label. */
+/** The row's name button: what the sidebar shows as the project's name.
+ *  Clicking it opens the project overview (our addition), so unfolding the
+ *  session list is a separate control — see `toggleFor`. */
 function rowFor(label: string): HTMLElement {
+  const names = [...node.querySelectorAll<HTMLElement>("button[data-workspace-name]")];
+  const named = names.find((el) => el.textContent?.includes(label));
+  if (named) return named;
+  // Group headers and the WORKTREES row are disclosure controls that carry
+  // their own label; they have no separate name button.
   const rows = [...node.querySelectorAll<HTMLElement>("button[aria-expanded]")];
   const match = rows.find((el) => el.textContent?.includes(label));
   if (!match) throw new Error(`no header row for ${label}`);
   return match;
+}
+
+/** The row's disclosure chevron: unfolds/folds that workspace's sessions. */
+function toggleFor(label: string): HTMLElement {
+  const row = rowFor(label);
+  const toggle = row
+    .closest<HTMLElement>("[data-workspace-row]")
+    ?.querySelector<HTMLElement>("button[data-workspace-toggle]");
+  // A group header or the WORKTREES row toggles itself.
+  return toggle ?? row;
 }
 
 async function render(repos: AiChatRepo[]) {
@@ -50,24 +67,50 @@ async function render(repos: AiChatRepo[]) {
   });
 }
 
+it("название проекта открывает обзор, а стрелка раскрывает сессии", async () => {
+  // Два жеста на одной строке: имя — страница проекта, стрелка рядом с ним —
+  // список сессий. Иначе клик по имени отнял бы раскрытие, которое было у
+  // строки раньше.
+  const onOpenProject = vi.fn();
+  await act(async () => {
+    root.render(<AiChatSidebar repos={[repo("a")]} onOpenProject={onOpenProject} />);
+  });
+
+  await act(async () => rowFor("a").click());
+  expect(onOpenProject).toHaveBeenCalledWith("a");
+  expect(toggleFor("a").getAttribute("aria-expanded")).toBe("false");
+
+  await act(async () => toggleFor("a").click());
+  expect(toggleFor("a").getAttribute("aria-expanded")).toBe("true");
+  expect(onOpenProject).toHaveBeenCalledTimes(1);
+});
+
+it("без обзора проекта название по-прежнему раскрывает список", async () => {
+  // Встроенные строки (архив) и чужие хосты свойства не передают — жест
+  // остаётся прежним, а не пропадает.
+  await render([repo("a")]);
+  await act(async () => rowFor("a").click());
+  expect(toggleFor("a").getAttribute("aria-expanded")).toBe("true");
+});
+
 it("remembers which workspaces the user expanded", async () => {
   // The bug: expansion lived in component state, so every restart reopened
   // only the first workspace and the user's tree shape was lost.
   await render([repo("a"), repo("b"), repo("c")]);
-  expect(rowFor("b").getAttribute("aria-expanded")).toBe("false");
+  expect(toggleFor("b").getAttribute("aria-expanded")).toBe("false");
 
-  await act(async () => rowFor("b").click());
+  await act(async () => toggleFor("b").click());
 
-  expect(rowFor("b").getAttribute("aria-expanded")).toBe("true");
+  expect(toggleFor("b").getAttribute("aria-expanded")).toBe("true");
   expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).toContain("b");
 
   // Remount: the freshly mounted sidebar must restore the same shape.
   await act(async () => root.unmount());
   root = createRoot(node);
   await render([repo("a"), repo("b"), repo("c")]);
-  expect(rowFor("b").getAttribute("aria-expanded")).toBe("true");
+  expect(toggleFor("b").getAttribute("aria-expanded")).toBe("true");
   // Untouched rows keep the built-in default (only the first opens).
-  expect(rowFor("c").getAttribute("aria-expanded")).toBe("false");
+  expect(toggleFor("c").getAttribute("aria-expanded")).toBe("false");
 });
 
 it("active draft 新对话会展开其所在的折叠工作区", async () => {
@@ -94,26 +137,26 @@ it("active draft 新对话会展开其所在的折叠工作区", async () => {
       />,
     );
   });
-  expect(rowFor("b").getAttribute("aria-expanded")).toBe("true");
+  expect(toggleFor("b").getAttribute("aria-expanded")).toBe("true");
   expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).toContain("b");
 
-  await act(async () => rowFor("b").click());
-  expect(rowFor("b").getAttribute("aria-expanded")).toBe("false");
+  await act(async () => toggleFor("b").click());
+  expect(toggleFor("b").getAttribute("aria-expanded")).toBe("false");
   expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).not.toContain("b");
 });
 
 it("remembers collapses too, and the default never overrides a stored set", async () => {
   await render([repo("a", true), repo("b")]);
-  expect(rowFor("a").getAttribute("aria-expanded")).toBe("true");
+  expect(toggleFor("a").getAttribute("aria-expanded")).toBe("true");
 
-  await act(async () => rowFor("a").click());
+  await act(async () => toggleFor("a").click());
   expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).not.toContain("a");
 
   await act(async () => root.unmount());
   root = createRoot(node);
   // defaultOpen would open "a" again, but the user's choice wins.
   await render([repo("a", true), repo("b")]);
-  expect(rowFor("a").getAttribute("aria-expanded")).toBe("false");
+  expect(toggleFor("a").getAttribute("aria-expanded")).toBe("false");
 });
 
 function namedThreadCount(): number {
@@ -145,8 +188,8 @@ it("展开只显示 threadLimit 条,收起再展开不会保留加载更多", as
   await act(async () => more.click());
   expect(namedThreadCount()).toBe(12);
 
-  await act(async () => rowFor("a").click());
-  await act(async () => rowFor("a").click());
+  await act(async () => toggleFor("a").click());
+  await act(async () => toggleFor("a").click());
   expect(namedThreadCount()).toBe(5);
 });
 
@@ -165,7 +208,7 @@ it("收起会话列表时裁切高度而不做透明度淡出", async () => {
   });
   expect(namedThreadCount()).toBe(3);
 
-  await act(async () => rowFor("a").click());
+  await act(async () => toggleFor("a").click());
 
   const panel = [...node.querySelectorAll<HTMLElement>("[aria-hidden]")].find((el) =>
     (el.getAttribute("class") ?? "").includes("grid-rows-"),

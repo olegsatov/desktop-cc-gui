@@ -94,24 +94,24 @@ describe("project overview layout", () => {
   });
 
   it("round-trips a custom order and folded blocks", () => {
-    saveProjectOverview(A, { order: ["todos", "rules"], folded: { rules: true } });
+    saveProjectOverview(A, { order: ["work", "rules"], folded: { rules: true } });
     const layout = readProjectOverview(A);
-    expect(layout.order.slice(0, 2)).toEqual(["todos", "rules"]);
+    expect(layout.order.slice(0, 2)).toEqual(["work", "rules"]);
     expect(layout.folded).toEqual({ rules: true });
   });
 
   it("keeps each project's layout to itself", () => {
-    saveProjectOverview(A, { order: ["todos"], folded: {} });
+    saveProjectOverview(A, { order: ["work"], folded: {} });
     expect(readProjectOverview(B).order).toEqual([...DEFAULT_OVERVIEW_ORDER]);
   });
 
   it("drops unknown block ids from a stored layout", () => {
     localStorage.setItem(
       "ccgui-next.projectOverview:v1:" + A,
-      JSON.stringify({ order: ["todos", "gone"], folded: { gone: true, rules: true } }),
+      JSON.stringify({ order: ["work", "gone"], folded: { gone: true, rules: true } }),
     );
     const layout = readProjectOverview(A);
-    expect(layout.order).toEqual(["todos"]);
+    expect(layout.order).toEqual(["work"]);
     expect(layout.folded).toEqual({ rules: true });
   });
 

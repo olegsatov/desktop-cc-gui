@@ -7,7 +7,7 @@
 import { readStoredJson, writeStored } from "@/lib/storage";
 
 /** Block ids the overview knows; unknown ids are dropped on read. */
-const KNOWN = ["rules", "memory", "todos", "tasks", "skills", "repos"] as const;
+const KNOWN = ["rules", "memory", "work", "skills", "repos"] as const;
 export type OverviewBlockId = (typeof KNOWN)[number];
 
 const KNOWN_IDS = new Set<string>(KNOWN);
@@ -17,8 +17,7 @@ const OVERVIEW_KEY_PREFIX = "ccgui-next.projectOverview:v1:";
 export const DEFAULT_OVERVIEW_ORDER: OverviewBlockId[] = [
   "rules",
   "memory",
-  "todos",
-  "tasks",
+  "work",
   "skills",
   "repos",
 ];

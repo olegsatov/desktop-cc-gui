@@ -34,27 +34,23 @@ import { useChatStore } from "./store";
 interface BlockDef {
   id: OverviewBlockId;
   title: string;
-  /** Blocks with the same `pair` value render side by side. */
-  pair: "none" | "row";
   /** Hidden entirely while it has nothing to show. */
   optional?: boolean;
 }
 
 const BLOCKS: readonly BlockDef[] = [
-  { id: "rules", title: "Правила проекта", pair: "none" },
-  { id: "memory", title: "Договорённости и разборы", pair: "none" },
-  { id: "todos", title: "Списки дел", pair: "row" },
-  { id: "tasks", title: "Расписания", pair: "row" },
-  { id: "skills", title: "Навыки", pair: "none" },
-  { id: "repos", title: "Репозитории", pair: "none", optional: true },
+  { id: "rules", title: "Правила проекта" },
+  { id: "memory", title: "Договорённости и разборы" },
+  { id: "work", title: "Дела и расписания" },
+  { id: "skills", title: "Навыки" },
+  { id: "repos", title: "Репозитории", optional: true },
 ];
 
 /** Rows shown before the "show the rest" link, per block. */
 const PEEK: Record<OverviewBlockId, number> = {
   rules: 4,
   memory: 6,
-  todos: 12,
-  tasks: 12,
+  work: 12,
   skills: 40,
   repos: 12,
 };
@@ -195,11 +191,8 @@ export function ProjectOverview({ workspacePath }: { workspacePath: string }) {
       <div className={cx(timelineColumnClass(wide), "px-4 pb-10 pt-5")}>
         <OverviewHeader data={data} />
 
-        {visible.map((block, index) => {
+        {visible.map((block) => {
           const isFolded = folded[block.id] === true;
-          const previous = visible[index - 1];
-          const startsRow = block.pair === "row" && previous?.pair !== "row";
-          const inRow = block.pair === "row";
           const target = dropTarget?.id === block.id ? dropTarget : null;
           return (
             <div
@@ -207,8 +200,6 @@ export function ProjectOverview({ workspacePath }: { workspacePath: string }) {
               data-overview-block={block.id}
               className={cx(
                 "overview-block",
-                inRow && "overview-block-row",
-                startsRow && "overview-block-row-start",
                 dragging === block.id && "overview-block-dragging",
                 target && (target.before ? "overview-drop-before" : "overview-drop-after"),
               )}
@@ -337,10 +328,14 @@ function hintFor(id: OverviewBlockId, data: ProjectOverviewData): string {
       return data.rules.source ?? "";
     case "memory":
       return data.memory.length ? `${data.memory.length} файлов` : "";
-    case "todos":
-      return data.todos.left ? `${data.todos.left} несделанных` : "всё сделано";
-    case "tasks":
-      return data.tasks.length ? `${data.tasks.length}` : "";
+    case "work":
+      // Подпись блока — про оба его столбца: сколько дел и сколько расписаний.
+      return [
+        data.todos.left ? `${data.todos.left} дел` : "",
+        data.tasks.length ? `${data.tasks.length} расписаний` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
     case "skills":
       return data.skills.length ? `${data.skills.length}` : "";
     case "repos":
@@ -403,58 +398,23 @@ function BlockBody({
         </>
       );
     }
-    case "todos": {
-      if (!data.todos.items.length) return <Empty text="Список дел пуст." />;
+    case "work": {
+      const left = data.todos.left ? `${data.todos.left} дел` : "дел нет";
+      const right = data.tasks.length ? `${data.tasks.length} задач` : "расписаний нет";
       return (
-        <ul className="overview-list">
-          {data.todos.items.map((item) => (
-            <li key={item.id} className="overview-row" style={{ paddingLeft: item.depth * 14 }}>
-              {item.done ? (
-                <CircleCheck
-                  className="size-3.5 shrink-0 text-foreground-icon-tertiary"
-                  aria-hidden
-                />
-              ) : (
-                <Square className="size-3.5 shrink-0 text-foreground-icon-tertiary" aria-hidden />
-              )}
-              <span
-                className={cx(
-                  "min-w-0 truncate",
-                  item.done && "text-text-tertiary line-through",
-                )}
-              >
-                {item.text}
-              </span>
-            </li>
-          ))}
-        </ul>
-      );
-    }
-    case "tasks": {
-      if (!data.tasks.length) return <Empty text="Расписаний по проекту нет." />;
-      return (
-        <ul className="overview-list">
-          {data.tasks.map((task) => (
-            <li key={task.id} className="overview-row">
-              <Clock
-                className={cx(
-                  "size-3.5 shrink-0",
-                  task.enabled ? "text-foreground-icon-tertiary" : "text-text-tertiary",
-                )}
-                aria-hidden
-              />
-              <span
-                className={cx(
-                  "min-w-0 flex-1 truncate",
-                  !task.enabled && "text-text-tertiary line-through",
-                )}
-              >
-                {task.title}
-              </span>
-              <span className="overview-meta">{formatNextRun(task.nextAt)}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="overview-cols">
+          <section className="overview-col">
+            <h4 className="overview-col-title">Списки дел</h4>
+            <TodoList data={data} />
+          </section>
+          <section className="overview-col">
+            <h4 className="overview-col-title">Расписания</h4>
+            <TaskList data={data} />
+          </section>
+          {/* Подписи держатся в самом блоке: наружу он отдаёт одной строкой,
+              сколько там того и другого. */}
+          <span className="sr-only">{`${left} ${right}`}</span>
+        </div>
       );
     }
     case "skills": {
@@ -501,6 +461,58 @@ function BlockBody({
 
 function Empty({ text }: { text: string }) {
   return <p className="overview-empty">{text}</p>;
+}
+
+/** Left column of the «Дела и расписания» block: this project's to-dos. */
+function TodoList({ data }: { data: ProjectOverviewData }) {
+  if (!data.todos.items.length) return <Empty text="Список дел пуст." />;
+  return (
+    <ul className="overview-list">
+      {data.todos.items.map((item) => (
+        <li key={item.id} className="overview-row" style={{ paddingLeft: item.depth * 14 }}>
+          {item.done ? (
+            <CircleCheck className="size-3.5 shrink-0 text-foreground-icon-tertiary" aria-hidden />
+          ) : (
+            <Square className="size-3.5 shrink-0 text-foreground-icon-tertiary" aria-hidden />
+          )}
+          <span
+            className={cx("min-w-0 truncate", item.done && "text-text-tertiary line-through")}
+          >
+            {item.text}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Right column of the same block: the schedules pointing at this project. */
+function TaskList({ data }: { data: ProjectOverviewData }) {
+  if (!data.tasks.length) return <Empty text="Расписаний по проекту нет." />;
+  return (
+    <ul className="overview-list">
+      {data.tasks.map((task) => (
+        <li key={task.id} className="overview-row">
+          <Clock
+            className={cx(
+              "size-3.5 shrink-0",
+              task.enabled ? "text-foreground-icon-tertiary" : "text-text-tertiary",
+            )}
+            aria-hidden
+          />
+          <span
+            className={cx(
+              "min-w-0 flex-1 truncate",
+              !task.enabled && "text-text-tertiary line-through",
+            )}
+          >
+            {task.title}
+          </span>
+          <span className="overview-meta">{formatNextRun(task.nextAt)}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function MoreButton({ label, onClick }: { label: string; onClick: () => void }) {

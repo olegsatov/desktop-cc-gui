@@ -156,25 +156,33 @@
   color: var(--color-text-tertiary, #6b7280);
 }
 
-/* ── Пара блоков в ряд: списки дел и расписания ──────────────────────── */
+/* ── Два столбца внутри блока («Дела и расписания») ─────────────────── */
 
-.overview-block-row-start {
+.overview-cols {
   display: flex;
-  gap: 18px;
+  gap: 26px;
   align-items: flex-start;
-  padding-bottom: 0;
 }
 
-.overview-block-row-start + .overview-block {
-  padding-top: 22px;
-}
-
-.overview-block-row-start .overview-block {
+.overview-col {
   flex: 1 1 0;
   min-width: 0;
-  padding-bottom: 0;
 }
 
-.overview-block-row-start .overview-head {
-  padding-top: 0;
+.overview-col-title {
+  margin: 0 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 14px;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary, #6b7280);
+}
+
+/* На узком окне столбцы встают один под другим. */
+@media (max-width: 760px) {
+  .overview-cols {
+    flex-direction: column;
+    gap: 14px;
+  }
 }

@@ -60,7 +60,10 @@ export interface ProjectOverviewData {
   tasks: TaskRow[];
   skills: string[];
   skillsOwn: string[];
-  counts: Record<"rules" | "memory" | "todos" | "tasks" | "skills" | "repos" | "sessions", number>;
+  /** One entry per overview block, plus `sessions` for the cover chip.
+   *  «Дела и расписания» is a single block (`work`); its two columns still
+   *  count separately in `todos.left` / `tasks.length`. */
+  counts: Record<"rules" | "memory" | "work" | "skills" | "repos" | "sessions", number>;
 }
 
 const EMPTY: ProjectOverviewData = {
@@ -77,7 +80,7 @@ const EMPTY: ProjectOverviewData = {
   tasks: [],
   skills: [],
   skillsOwn: [],
-  counts: { rules: 0, memory: 0, todos: 0, tasks: 0, skills: 0, repos: 0, sessions: 0 },
+  counts: { rules: 0, memory: 0, work: 0, skills: 0, repos: 0, sessions: 0 },
 };
 
 /** Where a project keeps its standing agreements, in priority order. */
@@ -263,8 +266,7 @@ export function useProjectOverview(workspacePath: string): ProjectOverviewData {
           counts: {
             rules: lines.length,
             memory: memory.length,
-            todos: todoRows.left,
-            tasks: taskRows.length,
+            work: todoRows.left + taskRows.length,
             skills: skills.all.length,
             repos: repoRows.length,
             sessions: mine.length,

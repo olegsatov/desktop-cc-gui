@@ -324,6 +324,7 @@ function RepoHeaderRow({
   return (
     <div
       onContextMenu={onContextMenu}
+      data-workspace-row={repo.id ?? undefined}
       className="group flex w-full cursor-pointer items-center gap-2 rounded-2lg p-2 transition-colors duration-150 ease hover:bg-background-secondary-hover"
     >
       <button
@@ -384,7 +385,7 @@ function RepoHeaderRow({
           sessions" are two separate gestures and neither loses its place. */}
       <button
         type="button"
-        aria-expanded={expanded}
+        data-workspace-name=""
         onClick={() => {
           if (onOpenProject && repo.id) onOpenProject(repo.id);
           else onToggleOpen();
@@ -414,6 +415,30 @@ function RepoHeaderRow({
             {repo.labelSuffix}
           </span>
         )}
+      </button>
+      {/* Раскрыть/свернуть список сессий: теперь это отдельная ручка, а не
+          клик по названию. Значок-папка слева сворачивает тоже (как было), но
+          он же — ручка перетаскивания, поэтому рядом со названием есть явная
+          стрелка: видно, что список раскрывается, и не нужно угадывать. */}
+      <button
+        type="button"
+        data-workspace-toggle=""
+        aria-expanded={expanded}
+        aria-label={collapseLabel}
+        title={collapseLabel}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleOpen();
+        }}
+        className="-m-1 shrink-0 cursor-pointer rounded-md p-1 text-foreground-icon-secondary hover:bg-background-tertiary-hover/55 hover:text-foreground-icon-primary"
+      >
+        <ChevronRight
+          aria-hidden
+          className={cx(
+            "size-3.5 transition-transform duration-150",
+            expanded && "rotate-90",
+          )}
+        />
       </button>
       {hasHoverActions && (
         <span className="ml-auto hidden shrink-0 items-center gap-1.5 group-hover:inline-flex">
