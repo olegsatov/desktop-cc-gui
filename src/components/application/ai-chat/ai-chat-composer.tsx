@@ -13,8 +13,8 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import GitMerge from "lucide-react/dist/esm/icons/git-merge";
 import Globe from "lucide-react/dist/esm/icons/globe";
-import ListCollapse from "lucide-react/dist/esm/icons/list-collapse";
-import ListTree from "lucide-react/dist/esm/icons/list-tree";
+import ChevronsDownUp from "lucide-react/dist/esm/icons/chevrons-down-up";
+import ChevronsUpDown from "lucide-react/dist/esm/icons/chevrons-up-down";
 import {
   Button as AriaButton,
   Dialog as AriaDialog,
@@ -456,10 +456,10 @@ function ProxyQuickToggle() {
 
 /** Process-fold glyph: keeps this workspace's thinking and tool-call runs
  *  folded while the agent works. The two positions must be told apart at a
- *  glance — the glyph changes (folded: lines collapsing, open: the steps as a
- *  tree) and so does the colour: club ink when folded, the muted grey when the
- *  runs open as they arrive. Both come from app tokens, because the club
- *  palette is what is on screen here. */
+ *  glance — the glyph changes (folded: chevrons meeting in the middle, open:
+ *  chevrons parting) and so does the colour: club ink when folded, the muted
+ *  grey when the runs open as they arrive. Both come from app tokens, because
+ *  the club palette is what is on screen here. */
 function ProcessCollapseToggle({
   collapsed,
   onToggle,
@@ -485,9 +485,9 @@ function ProcessCollapseToggle({
         )}
       >
         {collapsed ? (
-          <ListCollapse className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+          <ChevronsDownUp className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
         ) : (
-          <ListTree className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+          <ChevronsUpDown className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
         )}
       </AriaButton>
       <TooltipContent>

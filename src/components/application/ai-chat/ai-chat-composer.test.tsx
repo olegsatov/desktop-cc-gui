@@ -275,7 +275,7 @@ describe("代理快捷开关文案", () => {
     // Состояние должно быть видно глазом: другой значок и другие чернила.
     // (В клубной палитре text-secondary и foreground-icon-tertiary совпадают,
     // поэтому первая версия не различала положения вовсе.)
-    expect(glyph!.querySelector("svg.lucide-list-collapse")).not.toBeNull();
+    expect(glyph!.querySelector("svg.lucide-chevrons-down-up")).not.toBeNull();
     expect(glyph!.className).toContain("text-text-primary");
     await act(async () => glyph!.click());
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -295,7 +295,7 @@ describe("代理快捷开关文案", () => {
     );
     expect(glyph).not.toBeNull();
     expect(glyph!.getAttribute("aria-pressed")).toBe("false");
-    expect(glyph!.querySelector("svg.lucide-list-tree")).not.toBeNull();
+    expect(glyph!.querySelector("svg.lucide-chevrons-up-down")).not.toBeNull();
     expect(glyph!.className).toContain("text-foreground-icon-tertiary");
   });
 
