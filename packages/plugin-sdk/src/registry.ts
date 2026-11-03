@@ -69,6 +69,14 @@ export interface PanelTabDef {
   icon?: ComponentType<{ className?: string }>;
   component: ComponentType<{ workspacePath: string }>;
   order?: number;
+  /** Shared panel column: tabs carrying the same key render stacked in one
+   *  column, in display order, with a draggable divider between them whose
+   *  position is remembered per column. Only the first tab of the column
+   *  keeps its pill in the header strip — the others are reached through the
+   *  column itself, so anything they showed on their pill (a count, for
+   *  instance) has to live inside their own pane. Omitted = the tab owns a
+   *  whole column, as before. */
+  stack?: string;
 }
 
 /** App status bar item (plan §4.2 #8). The plugin owns its chip's look; the

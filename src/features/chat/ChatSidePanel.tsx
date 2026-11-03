@@ -3,7 +3,8 @@ import { PluginBoundary } from "@/features/plugins/boundary/PluginBoundary";
 import { pluginIdFromRegistryKey } from "@ccgui/plugin-sdk";
 import { cx } from "@/utils/cx";
 import { ChangesTab } from "./panel-tabs";
-import { resolveActivePanelTab, useSortedPanelTabs } from "./use-panel-tabs";
+import { PanelStack } from "./PanelStack";
+import { resolveActivePanelTab, usePanelColumns } from "./use-panel-tabs";
 import type { ActiveSession } from "./store";
 
 export function ChatSidePanel({
@@ -26,11 +27,30 @@ export function ChatSidePanel({
   overlay?: boolean;
 }) {
   const { t } = useTranslation();
-  const panelTabs = useSortedPanelTabs();
+  const columns = usePanelColumns();
   // Persisted tab may point at an unloaded plugin tab; fall back to the
   // first tab so the sidebar never renders fully hidden (read-side only).
-  const activeTab = active ? resolveActivePanelTab(panelTabs, panelTab) : undefined;
+  const activeTab = active ? resolveActivePanelTab(columns.flatMap((column) => column.tabs), panelTab) : undefined;
   if (!active) return null;
+  const workspacePath = active.workspacePath;
+  const activeColumn = columns.find((column) => column.tabs.some((tab) => tab.id === activeTab)) ?? columns[0];
+
+  /** One tab's pane: the crash boundary of its plugin and — for the builtin
+   *  changes tab — the `visible` flag it needs to poll only while shown. */
+  function pane(tab: (typeof columns)[number]["tabs"][number], shown: boolean) {
+    const TabComponent = tab.component;
+    const panel = tab.id === "changes" && TabComponent === ChangesTab ? (
+      <ChangesTab workspacePath={workspacePath} visible={!panelCollapsed && shown} />
+    ) : (
+      <TabComponent workspacePath={workspacePath} />
+    );
+    return tab.id.startsWith("plugin:") ? (
+      // Plugin tabs get a crash boundary scoped to their plugin id.
+      <PluginBoundary pluginId={pluginIdFromRegistryKey(tab.id)}>{panel}</PluginBoundary>
+    ) : (
+      panel
+    );
+  }
   return (
     <div
       ref={panelRef}
@@ -74,28 +94,20 @@ export function ChatSidePanel({
           !panelCollapsed && "border-l",
         )}
       >
-        {panelTabs.map((tab) => {
-          const TabComponent = tab.component;
-          const panel = tab.id === "changes" && TabComponent === ChangesTab ? (
-            <ChangesTab workspacePath={active.workspacePath} visible={!panelCollapsed && activeTab === tab.id} />
-          ) : (
-            <TabComponent workspacePath={active.workspacePath} />
-          );
+        {columns.map((column) => {
+          const shown = activeColumn?.key === column.key;
           return (
             <div
-              key={tab.id}
-              className={cx(
-                "min-h-0 flex-1",
-                activeTab === tab.id ? "flex flex-col" : "hidden",
-              )}
+              key={column.key}
+              className={cx("min-h-0 flex-1", shown ? "flex flex-col" : "hidden")}
             >
-              {tab.id.startsWith("plugin:") ? (
-                // Plugin tabs get a crash boundary scoped to their plugin id.
-                <PluginBoundary pluginId={pluginIdFromRegistryKey(tab.id)}>
-                  {panel}
-                </PluginBoundary>
+              {column.tabs.length > 1 ? (
+                <PanelStack
+                  columnKey={column.key}
+                  panes={column.tabs.map((tab) => ({ key: tab.id, node: pane(tab, shown) }))}
+                />
               ) : (
-                panel
+                pane(column.tabs[0], shown)
               )}
             </div>
           );

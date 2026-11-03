@@ -434,6 +434,7 @@ export function createPluginContext(
             icon: def.icon,
             component: def.component,
             order: def.order,
+            stack: def.stack,
           }),
         );
       },

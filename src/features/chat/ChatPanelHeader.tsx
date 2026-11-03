@@ -7,7 +7,8 @@ import { LaunchScriptActions } from "@/features/launch-script/LaunchScriptAction
 import { pluginPanelTabIcon } from "@/features/plugins/hub/PluginPanelTabIcon";
 import { cx } from "@/utils/cx";
 import { PANEL_TOGGLE_CLASSES } from "./panel-toggle-classes";
-import { resolveActivePanelTab, useSortedPanelTabs } from "./use-panel-tabs";
+import { visiblePanelTabs } from "./panel-stack";
+import { resolveActivePanelTab, usePanelColumns } from "./use-panel-tabs";
 
 /** Tab-strip actions slot: the open-in-app cluster plus the side panel's
  * titlebar header (files/changes pills and collapse toggles). */
@@ -33,10 +34,16 @@ export function ChatPanelHeader({
   const { t } = useTranslation();
   // Builtin tabs (files/changes) register at module scope in ./panel-tabs;
   // plugin tabs arrive via ctx.ui.registerPanelTab (plan §4.2 #4).
-  const panelTabs = useSortedPanelTabs();
-  // Persisted tab may point at an unloaded plugin tab; fall back to the
-  // first tab (read-side only, see resolveActivePanelTab).
-  const activeTab = resolveActivePanelTab(panelTabs, panelTab);
+  const columns = usePanelColumns();
+  const tabs = columns.flatMap((column) => column.tabs);
+  // One pill per column: a tab stacked under another one has no pill of its
+  // own — it is reached through that column (whatever it used to show on the
+  // pill belongs inside its pane).
+  const pills = visiblePanelTabs(tabs);
+  // Persisted tab may point at an unloaded plugin tab, or at a stacked one
+  // whose pill is gone; resolve to the pill actually in the strip (read-side
+  // only, see resolveActivePanelTab).
+  const activeTab = resolveActivePanelTab(tabs, panelTab);
   // One toggle for both directions; labels/icons follow the collapsed state.
   const toggleLabel = t(
     panelCollapsed ? "openApp.expandPanel" : "openApp.collapsePanel",
@@ -88,7 +95,7 @@ export function ChatPanelHeader({
             style={{ width: panelWidth }}
           >
             <PillTabList>
-              {panelTabs.map((tab) => {
+              {pills.map((tab) => {
                 // Plugin pills are icon-only: their labels are plugin-supplied
                 // and the strip is tight. `title` carries the label for hover
                 // and assistive tech; builtin files/changes keep icon+label.

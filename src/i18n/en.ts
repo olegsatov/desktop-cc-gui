@@ -92,6 +92,7 @@ export const en: Messages = {
     expandSidebar: "Expand sidebar",
     resizeSidebar: "Drag to resize sidebar",
     resizePanel: "Drag to resize panel",
+    resizePanelStack: "Drag to resize the panes in this column",
     splitRight: "Split right",
     splitDown: "Split down",
     closePane: "Close pane",

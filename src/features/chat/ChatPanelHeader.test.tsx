@@ -164,6 +164,82 @@ describe("ChatPanelHeader plugin pills", () => {
     expect(onPanelTabChange).toHaveBeenCalledWith("plugin:kimi-lb");
   });
 
+  it("keeps one pill per column — a stacked tab has none of its own", () => {
+    disposers.push(
+      panelTabRegistry.register({
+        id: "plugin:scheduled-tasks/overview",
+        label: () => "Scheduled Tasks",
+        order: 10,
+        stack: "chat-right-column",
+        icon: () => <svg data-testid="stack-top" />,
+        component: () => null,
+      }),
+      panelTabRegistry.register({
+        id: "plugin:todo-lists/todos",
+        label: () => "Todo",
+        order: 11,
+        stack: "chat-right-column",
+        icon: () => <svg data-testid="stack-bottom" />,
+        component: () => null,
+      }),
+    );
+    act(() => {
+      root.render(header());
+    });
+    // The column's entry keeps the pill; the to-do tab is reached through the
+    // column itself, so its pill would only repeat the pane next to it.
+    expect(pill("Scheduled Tasks")).not.toBeNull();
+    expect(pill("Todo")).toBeNull();
+    act(() => {
+      pill("Scheduled Tasks")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onPanelTabChange).toHaveBeenCalledWith("plugin:scheduled-tasks/overview");
+  });
+
+  it("marks the entry pill when the persisted tab is the stacked one", () => {
+    disposers.push(
+      panelTabRegistry.register({
+        id: "plugin:scheduled-tasks/overview",
+        label: () => "Scheduled Tasks",
+        order: 10,
+        stack: "chat-right-column",
+        icon: () => <svg />,
+        component: () => null,
+      }),
+      panelTabRegistry.register({
+        id: "plugin:todo-lists/todos",
+        label: () => "Todo",
+        order: 11,
+        stack: "chat-right-column",
+        icon: () => <svg />,
+        component: () => null,
+      }),
+    );
+    act(() => {
+      root.render(header("plugin:todo-lists/todos"));
+    });
+    expect(pill("Scheduled Tasks")?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("keeps the pill of a stacked tab that stands alone", () => {
+    disposers.push(
+      panelTabRegistry.register({
+        id: "plugin:todo-lists/todos",
+        label: () => "Todo",
+        order: 11,
+        stack: "chat-right-column",
+        icon: () => <svg />,
+        component: () => null,
+      }),
+    );
+    act(() => {
+      root.render(header());
+    });
+    // With the other plugin gone the column has a single pane and stays
+    // reachable from the strip, exactly as before.
+    expect(pill("Todo")).not.toBeNull();
+  });
+
   it("falls back to the plugin's manifest artwork when no icon is registered", async () => {
     usePluginsStore.setState({
       installed: [installedPlugin({ id: "kimi-lb", icon: "docs/icon.png" })],

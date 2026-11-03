@@ -641,6 +641,12 @@ export interface PluginContext {
       icon?: ComponentType<{ className?: string }>;
       component: ComponentType<{ workspacePath: string }>;
       order?: number;
+      /** Shared panel column: tabs carrying the same key render stacked in
+       *  one column, in display order, with a draggable divider between them
+       *  whose position is remembered per column (our patch). Only the first
+       *  tab of the column keeps its pill in the strip — the others are
+       *  reached through the column itself. Omitted = a column of its own. */
+      stack?: string;
     }): Disposer;
     /** App status-bar chip (plan §4.2 #8). */
     registerStatusBarItem(def: {

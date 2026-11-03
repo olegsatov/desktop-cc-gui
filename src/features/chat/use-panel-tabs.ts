@@ -5,6 +5,7 @@ import {
   useRegistry,
   type PanelTabDef,
 } from "@ccgui/plugin-sdk";
+import { entryTabId, groupPanelColumns, type PanelColumn } from "./panel-stack";
 
 /** Registry entries in display order (compareByOrder: undefined order sorts
  *  last, ties by id). Shared by ChatPanelHeader's pills and ChatSidePanel's
@@ -23,6 +24,18 @@ export function resolveActivePanelTab(
   tabs: PanelTabDef[],
   activeId: string,
 ): string | undefined {
-  if (tabs.some((tab) => tab.id === activeId)) return activeId;
+  if (tabs.some((tab) => tab.id === activeId)) {
+    // A stacked tab (its pill is not in the strip — only its column's entry
+    // keeps one) resolves to that entry: the column shown is the same, and
+    // the strip then marks a pill that is actually there.
+    return entryTabId(tabs, activeId);
+  }
   return tabs[0]?.id;
+}
+
+/** The panel's columns: a tab on its own, or several tabs stacked in one
+ *  column (PanelTabDef.stack — see panel-stack.ts). */
+export function usePanelColumns(): PanelColumn<PanelTabDef>[] {
+  const tabs = useSortedPanelTabs();
+  return useMemo(() => groupPanelColumns(tabs), [tabs]);
 }

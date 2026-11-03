@@ -84,6 +84,7 @@ export const ko: Messages = {
     expandSidebar: "사이드바 펼치기",
     resizeSidebar: "드래그하여 사이드바 크기 조절",
     resizePanel: "드래그하여 패널 크기 조절",
+    resizePanelStack: "드래그하여 같은 열의 패널 높이 조절",
     splitRight: "오른쪽으로 분할",
     splitDown: "아래로 분할",
     closePane: "분할 창 닫기",

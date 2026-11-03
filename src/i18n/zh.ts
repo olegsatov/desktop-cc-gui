@@ -88,6 +88,7 @@ export const zh = {
     expandSidebar: "展开侧边栏",
     resizeSidebar: "拖拽调整侧边栏宽度",
     resizePanel: "拖拽调整面板宽度",
+    resizePanelStack: "拖拽调整同一列内面板的高度",
     splitRight: "向右分屏",
     splitDown: "向下分屏",
     closePane: "关闭这一格",

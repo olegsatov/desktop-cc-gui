@@ -677,6 +677,12 @@ export interface PluginContext {
       icon?: ComponentLike<{ className?: string }>;
       component: ComponentLike<{ workspacePath: string }>;
       order?: number;
+      /** 共用一列（0.3.x 起）：填同一个值的 tab 在右侧面板里上下叠成一列，
+       *  中间是可上下拖动的分隔条，位置按这一列记住。只有显示顺序最靠前的
+       *  那个 tab 在页签条里保留图标，其余几个靠这一列本身到达——它们原先
+       *  挂在图标上的东西（比如计数）要在自己的面板里显示。不填 = 各占一整
+       *  列，和以前一样。 */
+      stack?: string;
     }): Disposer;
     /** 应用底部状态栏条目（权限 ui:status-bar）。 */
     registerStatusBarItem(def: {
