@@ -170,6 +170,7 @@ const TimelineRowView = memo(function TimelineRowView({
   autoExpand,
   answered,
   thinkingAutoCollapse,
+  collapsedByDefault,
   seenTools,
   searchTarget,
   forkAnchor,
@@ -191,6 +192,9 @@ const TimelineRowView = memo(function TimelineRowView({
   answered: boolean;
   /** False keeps a settled thinking row expanded (设置 → 通用 → 行为). */
   thinkingAutoCollapse: boolean;
+  /** True: this workspace folds every process run until the user opens one
+   *  (the composer toggle left of the context meter). */
+  collapsedByDefault: boolean;
   seenTools: Set<string>;
   searchTarget?: ProcessSearchTarget;
   /** 这一行自己的分叉锚点（`resolveForkAnchors` 预先算好）。**不要**改回传整份
@@ -228,6 +232,7 @@ const TimelineRowView = memo(function TimelineRowView({
         turnLive={turnLive}
         answered={answered}
         thinkingAutoCollapse={thinkingAutoCollapse}
+        collapsedByDefault={collapsedByDefault}
         processId={row.firstSeq}
         seenTools={seenTools}
         searchTarget={searchTarget}
@@ -951,6 +956,11 @@ export const MessageTimeline = memo(function MessageTimeline({
 
   const { t } = useTranslation();
   const thinkingAutoCollapse = useChatStore((s) => s.thinkingAutoCollapse);
+  // Process runs stay folded unless this workspace is one of the exceptions
+  // (composer toggle next to the context meter).
+  const collapsedByDefault = useChatStore(
+    (s) => !s.processExpandedByWorkspace[workspacePath],
+  );
   const wideLayout = useChatStore((s) => s.wideLayout);
   // 分叉入口的可用性在这里取一次再往下传（而不是每行各订阅一次）：会话目录
   // 是长列表，逐行订阅会在每个流式 flush 里重扫一遍。
@@ -1251,6 +1261,7 @@ export const MessageTimeline = memo(function MessageTimeline({
                     }
                     answered={processAnswered[item.index]}
                     thinkingAutoCollapse={thinkingAutoCollapse}
+                    collapsedByDefault={collapsedByDefault}
                     seenTools={seenTools}
                     searchTarget={item.index === currentSearchRow ? processSearchTarget : undefined}
                     forkAnchor={forkAnchorFor(rows[item.index], forkAnchors)}

@@ -350,6 +350,12 @@ export const ko: Messages = {
     proxyOff: "프록시: 꺼짐 - 클릭하여 켜기",
     proxyConfigure: "네트워크 프록시가 설정되지 않았습니다. 클릭하여 설정 열기",
     proxyTipOn: "네트워크 프록시 켜짐: 새로 실행하는 엔진과 터미널에 프록시가 적용됩니다. 클릭하여 끄기",
+    processFoldOn: "이 프로젝트에서는 사고와 도구 호출을 접어 둡니다",
+    processFoldOff: "이 프로젝트에서는 사고와 도구 호출을 실행 중에 펼칩니다",
+    processFoldTipOn:
+      "이 프로젝트는 실행 중에도 사고와 도구 호출을 접어 둡니다. 클릭하면 도착하는 대로 펼칩니다",
+    processFoldTipOff:
+      "이 프로젝트는 실행 중에 사고와 도구 호출을 펼칩니다. 클릭하면 접어 둡니다",
     proxyTipOff: "네트워크 프록시 꺼짐. 클릭하여 켜면 새로 실행하는 엔진과 터미널에 설정 → 네트워크 프록시의 프록시 URL이 적용됩니다",
     proxyTipConfigure: "네트워크 프록시가 설정되지 않았습니다. 클릭하여 설정 → 네트워크 프록시 열기",
     contextWindow: "컨텍스트 창",

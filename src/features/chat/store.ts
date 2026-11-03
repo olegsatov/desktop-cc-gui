@@ -12,6 +12,7 @@ import {
 import {
   ENGINE_PREF_KEY,
   persistTabs,
+  readProcessExpandedWorkspaces,
   sessionKey,
 } from "./store/persistence";
 import { patchSession, resolveSessionModel } from "./store/stream";
@@ -191,6 +192,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
     archivedWorkspaces: [],
     sendShortcut: "enter",
     thinkingAutoCollapse: true,
+    processExpandedByWorkspace: readProcessExpandedWorkspaces(),
     wideLayout: false,
     bySession: {},
     streamingByKey: {},

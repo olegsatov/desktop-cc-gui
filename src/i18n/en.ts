@@ -385,6 +385,12 @@ export const en: Messages = {
     proxyOff: "Proxy: off - click to turn on",
     proxyConfigure: "Network proxy is not configured; click to open Settings",
     proxyTipOn: "Network proxy on: newly launched engines and terminals use the proxy. Click to turn off",
+    processFoldOn: "Thinking and tool calls stay folded in this project",
+    processFoldOff: "Thinking and tool calls open while they run in this project",
+    processFoldTipOn:
+      "This project keeps thinking and tool calls folded while the agent runs. Click to let them open as they arrive",
+    processFoldTipOff:
+      "This project opens thinking and tool calls while the agent runs. Click to keep them folded",
     proxyTipOff: "Network proxy off. Click to enable — newly launched engines and terminals will use the proxy URL from Settings → Network proxy",
     proxyTipConfigure: "Network proxy is not configured: click to open Settings → Network proxy",
     contextWindow: "Context window",

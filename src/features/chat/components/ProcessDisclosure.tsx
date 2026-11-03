@@ -246,7 +246,7 @@ export function ThinkingSurface({
   );
 }
 
-type ExpansionProps = { auto: boolean; live: boolean; thinking: boolean; answered: boolean };
+type ExpansionProps = { auto: boolean; live: boolean; thinking: boolean; answered: boolean; collapsed: boolean };
 
 
 /** Pure transition table for the expanded-state machine: given the previous
@@ -298,6 +298,22 @@ function expansionTransition(
 }
 
 
+/** Workspace toggle gate: with “fold process blocks” on, automation never
+ *  opens a row — neither the live tail nor resumed thinking. Switching the mode
+ *  on folds whatever the user has not pinned open by hand; switching it off
+ *  hands the live tail back to automation, which is the row that opens on
+ *  arrival. Inside either mode the user's own header click is left alone. */
+function processFoldTransition(
+  prev: ExpansionProps,
+  next: ExpansionProps,
+  expanded: boolean,
+  overridden: boolean,
+): { expanded: boolean; overridden: boolean } {
+  if (!next.collapsed) return { expanded: next.auto ? true : expanded, overridden: false };
+  if (!prev.collapsed) return { expanded: false, overridden: false };
+  return { expanded, overridden };
+}
+
 /** Expanded-state hook: holds the expanded flag and the user's override,
  *  delegating every prop-change decision to `expansionTransition`. */
 function useProcessExpansion(
@@ -307,28 +323,34 @@ function useProcessExpansion(
   hasThinking: boolean,
   answered: boolean,
   thinkingAutoCollapse: boolean,
+  collapsedByDefault: boolean,
   searchRequest?: string,
 ) {
-  const [expanded, setExpanded] = useState(autoExpand || searchRequest !== undefined);
+  const [expanded, setExpanded] = useState(
+    searchRequest !== undefined || (autoExpand && !collapsedByDefault),
+  );
   // Once the user clicks the header, their choice wins over the auto
   // expand/collapse driven by streaming state.
   const [overridden, setOverridden] = useState(searchRequest !== undefined);
   // React-blessed adjust-during-render: previous prop values live in state,
   // so a prop change settles in the same commit that observed it — no
   // one-frame paint of the stale expanded value.
-  const [prev, setPrev] = useState({ auto: autoExpand, live: turnLive, thinking: hasLiveThinking, answered, searchRequest });
-  const next = { auto: autoExpand, live: turnLive, thinking: hasLiveThinking, answered, searchRequest };
+  const [prev, setPrev] = useState({ auto: autoExpand, live: turnLive, thinking: hasLiveThinking, answered, searchRequest, collapsed: collapsedByDefault });
+  const next = { auto: autoExpand, live: turnLive, thinking: hasLiveThinking, answered, searchRequest, collapsed: collapsedByDefault };
   if (
     prev.auto !== next.auto
     || prev.live !== next.live
     || prev.thinking !== next.thinking
     || prev.answered !== next.answered
     || prev.searchRequest !== next.searchRequest
+    || prev.collapsed !== next.collapsed
   ) {
     setPrev(next);
     const settled = searchRequest !== undefined && searchRequest !== prev.searchRequest
       ? { expanded: true, overridden: true }
-      : expansionTransition(prev, next, expanded, overridden, thinkingAutoCollapse, hasThinking);
+      : next.collapsed || prev.collapsed
+        ? processFoldTransition(prev, next, expanded, overridden)
+        : expansionTransition(prev, next, expanded, overridden, thinkingAutoCollapse, hasThinking);
     // Setting state to its current value bails out without a re-render, so
     // the no-op transitions are free.
     setOverridden(settled.overridden);
@@ -495,6 +517,7 @@ export const ProcessDisclosure = memo(function ProcessDisclosure({
   turnLive = false,
   answered = false,
   thinkingAutoCollapse = true,
+  collapsedByDefault = false,
   processId,
   seenTools,
   searchTarget,
@@ -513,6 +536,10 @@ export const ProcessDisclosure = memo(function ProcessDisclosure({
    *  text after it, or the turn settled). False (设置 → 通用 → 行为): keep the
    *  run expanded; the user can still fold it by hand. */
   thinkingAutoCollapse?: boolean;
+  /** True: this workspace folds every process run (the composer toggle left of
+   *  the context meter). Automation stops opening rows — the live tail included
+   *  — and only a header click reveals one. */
+  collapsedByDefault?: boolean;
   processId: number;
   seenTools: Set<string>;
   searchTarget?: ProcessSearchTarget;
@@ -531,6 +558,7 @@ export const ProcessDisclosure = memo(function ProcessDisclosure({
     hasThinking,
     answered,
     thinkingAutoCollapse,
+    collapsedByDefault,
     searchTarget?.requestKey,
   );
   const reduceMotion = useReducedMotion() ?? false;

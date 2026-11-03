@@ -62,6 +62,29 @@ const LEGACY_OPEN_TABS_KEY = "ccgui-next.openTabs";
 const LEGACY_ACTIVE_SESSION_KEY = "ccgui-next.activeSession";
 export const ENGINE_PREF_KEY = "ccgui-next.enginePref";
 export const PERMISSION_PREF_KEY = "ccgui-next.permissionPref";
+/** Workspaces whose process runs (thinking + tool calls) the user keeps open.
+ *  Only the exceptions are stored: an absent workspace means the folded
+ *  default, which is what the composer toggle switches away from. */
+export const PROCESS_EXPANDED_WORKSPACES_KEY =
+  "ccgui-next.processExpandedWorkspaces:v1";
+
+/** Per-workspace process-fold exceptions, keyed by workspace path. */
+export function readProcessExpandedWorkspaces(): Record<string, true> {
+  const list = readStoredJson(PROCESS_EXPANDED_WORKSPACES_KEY, (raw) =>
+    Array.isArray(raw)
+      ? raw.filter((value): value is string => typeof value === "string")
+      : null,
+  );
+  const out: Record<string, true> = {};
+  for (const path of list ?? []) if (path) out[path] = true;
+  return out;
+}
+
+export function writeProcessExpandedWorkspaces(
+  map: Record<string, true>,
+): void {
+  writeStored(PROCESS_EXPANDED_WORKSPACES_KEY, JSON.stringify(Object.keys(map)));
+}
 
 export function sameTab(
   tab: ActiveSession,

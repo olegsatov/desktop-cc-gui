@@ -998,7 +998,13 @@ describe("process run fold timing", () => {
 
   beforeEach(async () => {
     await i18n.changeLanguage("zh");
-    useChatStore.setState({ thinkingAutoCollapse: true });
+    // This suite pins automation's own behavior: /ws is one of the workspaces
+    // whose process runs open while they arrive (the composer toggle's other
+    // position). The folded default has its own test below.
+    useChatStore.setState({
+      thinkingAutoCollapse: true,
+      processExpandedByWorkspace: { "/ws": true },
+    });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -1007,7 +1013,7 @@ describe("process run fold timing", () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
-    useChatStore.setState({ thinkingAutoCollapse: true });
+    useChatStore.setState({ thinkingAutoCollapse: true, processExpandedByWorkspace: {} });
   });
 
   it("keeps a running process open and folds it only when answer text follows", async () => {
@@ -1061,5 +1067,45 @@ describe("process run fold timing", () => {
       ),
     ).toEqual(["false", "true"]);
     expect(container.textContent).toContain("第二轮分析");
+  });
+
+  it("stays folded for the whole turn when the workspace folds its process runs", async () => {
+    const messages: Message[] = [
+      { seq: 1, role: "user", text: "做一下", ts: null },
+      { seq: 2, role: "thinking", text: "先看文件", ts: null, live: true },
+      { seq: 3, role: "tool", text: "Read", ts: null },
+    ];
+    const renderSession = async (next: Message[]) => {
+      await act(async () => {
+        root.render(
+          <MessageTimeline
+            session={{ ...EMPTY_SESSION, messages: next, streaming: true }}
+            streaming
+            onLoadEarlier={() => {}}
+            workspacePath="/ws"
+          />,
+        );
+      });
+    };
+    const header = () => container.querySelector<HTMLButtonElement>("button[aria-expanded]");
+
+    // The folded default: the same workspace without its entry in the map.
+    await act(async () => useChatStore.setState({ processExpandedByWorkspace: {} }));
+    await renderSession(messages);
+    expect(header()!.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain("先看文件");
+
+    // Answer text and the settled turn do not open it either.
+    await renderSession([
+      ...messages,
+      { seq: 4, role: "assistant", text: "答复", ts: null },
+    ]);
+    expect(header()!.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).toContain("答复");
+
+    // The reader can still reveal one run by hand.
+    await act(async () => header()!.click());
+    expect(header()!.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain("先看文件");
   });
 });

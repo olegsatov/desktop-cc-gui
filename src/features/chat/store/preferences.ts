@@ -4,6 +4,7 @@ import { writeStored } from "@/lib/storage";
 import {
   PERMISSION_PREF_KEY,
   sessionKey,
+  writeProcessExpandedWorkspaces,
   type ActiveSession,
 } from "./persistence";
 import { patchSession } from "./stream";
@@ -38,6 +39,7 @@ export function createPreferenceActions(
   | "setThreadLimit"
   | "setSendShortcut"
   | "setThinkingAutoCollapse"
+  | "toggleProcessCollapse"
   | "setWideLayout"
 > {
   const { set, get, stampActiveTab } = deps;
@@ -145,6 +147,16 @@ export function createPreferenceActions(
     },
     setThinkingAutoCollapse: (autoCollapse) => {
       set({ thinkingAutoCollapse: autoCollapse });
+    },
+    toggleProcessCollapse: (workspacePath) => {
+      // One switch per workspace; absent keys are the folded default, so the
+      // map only ever lists the workspaces the user asked to keep open.
+      if (!workspacePath) return;
+      const next = { ...get().processExpandedByWorkspace };
+      if (next[workspacePath]) delete next[workspacePath];
+      else next[workspacePath] = true;
+      writeProcessExpandedWorkspaces(next);
+      set({ processExpandedByWorkspace: next });
     },
     setWideLayout: (wide) => {
       set({ wideLayout: wide });

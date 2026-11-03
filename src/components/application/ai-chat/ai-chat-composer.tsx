@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import GitMerge from "lucide-react/dist/esm/icons/git-merge";
 import Globe from "lucide-react/dist/esm/icons/globe";
+import ListCollapse from "lucide-react/dist/esm/icons/list-collapse";
 import {
   Button as AriaButton,
   Dialog as AriaDialog,
@@ -452,6 +453,43 @@ function ProxyQuickToggle() {
   );
 }
 
+/** Process-fold glyph: keeps this workspace's thinking and tool-call runs
+ *  folded while the agent works. Dim is the folded default; the lighter grey
+ *  marks the workspace where runs open as they arrive. Same bare-button shape
+ *  as the proxy glyph beside it. */
+function ProcessCollapseToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = t(collapsed ? "chat.processFoldOn" : "chat.processFoldOff");
+  return (
+    <Tooltip>
+      <AriaButton
+        // 插件 оформления держит в правой группе строки только последний значок —
+        // собственное правило cleanRow. Без этой пометки кнопка исчезла бы вместе
+        // с остальными; тот же приём, что у строки полосы прогона.
+        data-testid="process-fold-toggle"
+        aria-label={label}
+        aria-pressed={collapsed}
+        onPress={onToggle}
+        className={cx(
+          "flex cursor-pointer items-center rounded-full p-1.5 outline-none transition-colors duration-150 ease focus-visible:ring-2 focus-visible:ring-border-focus-ring",
+          collapsed ? "text-foreground-icon-tertiary" : "text-text-secondary",
+        )}
+      >
+        <ListCollapse className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+      </AriaButton>
+      <TooltipContent>
+        {t(collapsed ? "chat.processFoldTipOn" : "chat.processFoldTipOff")}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 /** 16px circular context meter at `pct` percent. */
 function ContextRing({ pct }: { pct: number }) {
   const r = 6;
@@ -484,6 +522,8 @@ export function StatusBar({
   usagePct,
   contextMax,
   contextSegments,
+  processCollapsed,
+  onToggleProcessCollapse,
   onCompactContext,
   onRefreshUsage,
   compacting,
@@ -504,6 +544,10 @@ export function StatusBar({
   usagePct?: number;
   contextMax?: number;
   contextSegments?: ContextSegment[];
+  /** True: this workspace keeps thinking and tool-call runs folded. Omitted
+   *  hides the glyph (no workspace on screen). */
+  processCollapsed?: boolean;
+  onToggleProcessCollapse?: () => void;
   onCompactContext?: () => void;
   onRefreshUsage?: () => void;
   compacting?: boolean;
@@ -593,6 +637,12 @@ export function StatusBar({
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <ProxyQuickToggle />
+        {processCollapsed !== undefined && (
+          <ProcessCollapseToggle
+            collapsed={processCollapsed}
+            onToggle={onToggleProcessCollapse ?? (() => {})}
+          />
+        )}
         {/* Context meter is always on: 0% until the first usage report. */}
         <AriaDialogTrigger
           isOpen={contextOpen}

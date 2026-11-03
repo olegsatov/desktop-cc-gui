@@ -256,6 +256,39 @@ describe("代理快捷开关文案", () => {
     ).not.toBeNull();
     expect(container.querySelector('button[aria-label="chat.proxyOff"]')).toBeNull();
   });
+
+  // 折叠开关（思考与工具调用）坐在上下文计量环左边：默认折叠——按下态即折叠，
+  // 没有工作区时（新会话尚无归属）不出现，因为它没有可切换的对象。
+  it("工作区在屏幕上时有折叠开关，点击回调一次", async () => {
+    vi.spyOn(ipc, "getAppSettings").mockResolvedValue({} as AppSettings);
+    const onToggle = vi.fn();
+    await act(async () => {
+      root.render(
+        <HashRouter>
+          <StatusBar processCollapsed onToggleProcessCollapse={onToggle} />
+        </HashRouter>,
+      );
+    });
+    const glyph = container.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+    expect(glyph).not.toBeNull();
+    expect(glyph!.getAttribute("aria-label")).toBe("本项目内思考与工具调用保持折叠");
+    await act(async () => glyph!.click());
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("没有工作区时不出现折叠开关", async () => {
+    vi.spyOn(ipc, "getAppSettings").mockResolvedValue({} as AppSettings);
+    await act(async () => {
+      root.render(
+        <HashRouter>
+          <StatusBar />
+        </HashRouter>,
+      );
+    });
+    expect(
+      container.querySelector('button[aria-label="本项目内思考与工具调用保持折叠"]'),
+    ).toBeNull();
+  });
 });
 
 // Regression: a blocked send control must say WHY it is blocked. The tooltip

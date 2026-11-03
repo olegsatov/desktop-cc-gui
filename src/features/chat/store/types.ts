@@ -80,6 +80,11 @@ export interface ChatStore {
   archivedWorkspaces: string[];
   /** Composer send gesture ("enter" | "cmdEnter"), persisted in app settings. */
   sendShortcut: string;
+  /** Workspaces where process runs (thinking + tool calls) stay open, keyed by
+   *  workspace path; a missing path means the folded default. Per workspace and
+   *  in localStorage, not app settings: one repository may want the running
+   *  commentary visible while another stays quiet on the same machine. */
+  processExpandedByWorkspace: Record<string, true>;
   /** Thinking-process row behavior once its thinking settles: true = auto-fold
    *  (default), false = stay expanded until the user folds it. Persisted in
    *  app settings. */
@@ -231,6 +236,9 @@ export interface ChatStore {
   ) => Promise<void>;
   setSendShortcut: (shortcut: string) => void;
   setThinkingAutoCollapse: (autoCollapse: boolean) => void;
+  /** Fold/unfold every process run of one workspace (the toggle left of the
+   *  context meter in the composer); persisted in localStorage. */
+  toggleProcessCollapse: (workspacePath: string) => void;
   /** 宽幕布 (设置 → 通用 → 外观), persisted in app settings. */
   setWideLayout: (wide: boolean) => void;
   setDraft: (key: string, text: string) => void;

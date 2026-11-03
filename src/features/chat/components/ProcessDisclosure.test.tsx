@@ -68,6 +68,8 @@ async function render(
     thinkingAutoCollapse?: boolean;
     answered?: boolean;
     workspacePath?: string;
+    collapsedByDefault?: boolean;
+    searchTarget?: { itemIndex: number; requestKey: string };
   } = {},
 ) {
   await act(async () => {
@@ -78,8 +80,10 @@ async function render(
         turnLive={props.turnLive}
         answered={props.answered}
         thinkingAutoCollapse={props.thinkingAutoCollapse}
+        collapsedByDefault={props.collapsedByDefault}
         processId={1}
         seenTools={seenTools}
+        searchTarget={props.searchTarget}
         workspacePath={props.workspacePath}
       />,
     );
@@ -486,6 +490,86 @@ describe("ProcessDisclosure thinking expansion", () => {
       header!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(headerExpanded()).toBe(false);
+  });
+});
+
+describe("ProcessDisclosure workspace fold", () => {
+  it("keeps a live run folded and opens it on the header click", async () => {
+    const first = [{ type: "thinking", text: "先分析需求", live: true }] as ProcessItem[];
+    await render(first, { turnLive: true, collapsedByDefault: true });
+    expect(headerExpanded()).toBe(false);
+    expect(container.textContent).not.toContain("先分析需求");
+
+    // 流式内容继续到达，行不会自己打开
+    const next = [{ type: "thinking", text: "先分析需求，再看仓库", live: true }] as ProcessItem[];
+    await render(next, { turnLive: true, collapsedByDefault: true });
+    expect(headerExpanded()).toBe(false);
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("button[aria-expanded]")!.click();
+    });
+    expect(headerExpanded()).toBe(true);
+    expect(container.textContent).toContain("先分析需求，再看仓库");
+  });
+
+  it("does not reopen a thinking pause or the settled tail", async () => {
+    await render([{ type: "thinking", text: "先分析需求", live: true }], {
+      turnLive: true,
+      collapsedByDefault: true,
+    });
+    // 工具边界上思考停止（live 变 false），随后又继续 —— 都不该自己打开
+    await render(
+      [{ type: "thinking", text: "先分析需求" }, { type: "tool", text: "Read", path: null }],
+      { turnLive: true, collapsedByDefault: true },
+    );
+    expect(headerExpanded()).toBe(false);
+    await render(
+      [
+        { type: "thinking", text: "先分析需求" },
+        { type: "tool", text: "Read", path: null },
+        { type: "thinking", text: "继续分析", live: true },
+      ],
+      { turnLive: true, collapsedByDefault: true },
+    );
+    expect(headerExpanded()).toBe(false);
+
+    // 轮次结束（回答了、不再流式） —— 仍然是折叠的
+    await render(
+      [
+        { type: "thinking", text: "先分析需求" },
+        { type: "tool", text: "Read", path: null },
+        { type: "thinking", text: "继续分析" },
+      ],
+      { turnLive: false, answered: true, collapsedByDefault: true },
+    );
+    expect(headerExpanded()).toBe(false);
+  });
+
+  it("folds what is open when a workspace switches to folded", async () => {
+    await render([{ type: "thinking", text: "先分析需求", live: true }], { turnLive: true });
+    expect(headerExpanded()).toBe(true);
+
+    await render([{ type: "thinking", text: "先分析需求", live: true }], {
+      turnLive: true,
+      collapsedByDefault: true,
+    });
+    expect(headerExpanded()).toBe(false);
+
+    // 关掉开关回到原来的行为：最新的那一行重新自己打开
+    await render([{ type: "thinking", text: "先分析需求", live: true }], {
+      turnLive: true,
+      collapsedByDefault: false,
+    });
+    expect(headerExpanded()).toBe(true);
+  });
+
+  it("still opens the row a timeline search points at", async () => {
+    await render(tools(3), {
+      collapsedByDefault: true,
+      autoExpand: false,
+      searchTarget: { itemIndex: 1, requestKey: "req-1" },
+    });
+    expect(headerExpanded()).toBe(true);
   });
 });
 

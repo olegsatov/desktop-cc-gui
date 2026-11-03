@@ -262,6 +262,10 @@ function FooterStatusBar({
   const compactContext = useChatStore((s) => s.compactContext);
   const refreshSessionUsage = useChatStore((s) => s.refreshSessionUsage);
   const wide = useChatStore((s) => s.wideLayout);
+  // Process-fold toggle (left of the context meter): one switch per workspace,
+  // so the map itself is the state and the click writes it back.
+  const processExpandedByWorkspace = useChatStore((s) => s.processExpandedByWorkspace);
+  const toggleProcessCollapse = useChatStore((s) => s.toggleProcessCollapse);
   const [compacting, setCompacting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -441,6 +445,12 @@ function FooterStatusBar({
         usagePct={usage?.pct}
         contextMax={contextMax}
         contextSegments={contextSegments}
+        processCollapsed={
+          active ? !processExpandedByWorkspace[active.workspacePath] : undefined
+        }
+        onToggleProcessCollapse={
+          active ? () => toggleProcessCollapse(active.workspacePath) : undefined
+        }
         onCompactContext={handleCompact}
         onRefreshUsage={handleRefresh}
         compacting={compacting}
