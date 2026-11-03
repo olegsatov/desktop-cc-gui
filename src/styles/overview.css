@@ -1,0 +1,180 @@
+/**
+ * Project overview styles. Every class is prefixed `overview-` so it cannot
+ * collide with app or plugin selectors (`st-` / `td-` are taken by the two
+ * right-panel plugins).
+ *
+ * Rules, ink and label sizes come from the app's own tokens: the overview is
+ * a page of the same product, not a different one.
+ */
+
+/* ── Шапка блока ─────────────────────────────────────────────────────── */
+
+.overview-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 8px;
+}
+
+.overview-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 16px;
+  color: var(--color-text-tertiary, #6b7280);
+  white-space: nowrap;
+}
+
+.overview-hint {
+  margin-left: auto;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--color-text-tertiary, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overview-grip {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-foreground-icon-tertiary, #9ca3af);
+  transition: opacity 150ms ease;
+}
+
+/* Ручка показывается при наведении на блок — как ручки строк в панелях. */
+.overview-block:hover .overview-grip {
+  opacity: 1;
+}
+
+/* ── Блок и перетаскивание ───────────────────────────────────────────── */
+
+.overview-block {
+  padding-bottom: 22px;
+}
+
+/* Хозяин бледнеет, цель получает линию — тот же язык, что у строк списка
+   дел при перетаскивании. */
+.overview-block-dragging {
+  opacity: 0.4;
+}
+
+.overview-block.overview-drop-before,
+.overview-block.overview-drop-after {
+  position: relative;
+}
+
+.overview-block.overview-drop-before::before,
+.overview-block.overview-drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--color-accent-300, #d1d5db);
+}
+
+.overview-block.overview-drop-before::before {
+  top: -2px;
+}
+
+.overview-block.overview-drop-after::after {
+  bottom: 20px;
+}
+
+/* ── Содержимое блока ────────────────────────────────────────────────── */
+
+.overview-body {
+  padding-top: 2px;
+}
+
+.overview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overview-row,
+.overview-rule,
+.overview-memory {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--color-text-primary, #111827);
+}
+
+.overview-rule > span:first-child {
+  flex: 0 0 auto;
+  color: var(--color-foreground-icon-tertiary, #9ca3af);
+}
+
+.overview-file {
+  flex: 0 0 196px;
+  max-width: 196px;
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-tertiary, #6b7280);
+}
+
+.overview-desc {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.overview-meta {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--color-text-tertiary, #6b7280);
+  white-space: nowrap;
+}
+
+.overview-skill {
+  border: 1px solid var(--color-border-primary, #e5e7eb);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--color-text-primary, #111827);
+}
+
+.overview-foot,
+.overview-empty {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--color-text-tertiary, #6b7280);
+}
+
+/* ── Пара блоков в ряд: списки дел и расписания ──────────────────────── */
+
+.overview-block-row-start {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  padding-bottom: 0;
+}
+
+.overview-block-row-start + .overview-block {
+  padding-top: 22px;
+}
+
+.overview-block-row-start .overview-block {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-bottom: 0;
+}
+
+.overview-block-row-start .overview-head {
+  padding-top: 0;
+}

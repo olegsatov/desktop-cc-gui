@@ -15,6 +15,7 @@ import { recentPointerAnchor } from "@/lib/pointer-anchor";
 import { parseDraftSessionKey, sessionKey, useChatStore, sortedWorkspaceGroups } from "./store";
 import { isPluginOwnedSessionKey } from "@/features/plugins/runtime/owned-sessions";
 import { dismissCenterSurfaces } from "./center-surfaces";
+import { useProjectTabsStore } from "./store/project-tabs";
 import { focusComposerWhenVisible } from "./focus-composer";
 import { relativeTime } from "./time";
 import { useWorkspaceUIHooks, workspaceLabelSuffix } from "./workspace-ui-bridge";
@@ -416,6 +417,21 @@ export function useChatSidebar({
     },
     [workspaces, startNewChat, collapseSidebarOnMobile, composerInputRef],
   );
+  // Workspace row name: open the project overview in the center area. The
+  // caret beside the name still unfolds the session list — the two affordances
+  // do not compete. Other center surfaces step aside (same mutual exclusion
+  // as handleTabSelect), and the tab is remembered in the strip, so coming
+  // back to a project costs one click.
+  const handleOpenProject = useCallback(
+    (workspaceId: string) => {
+      const workspace = workspaces.find((w) => w.id === workspaceId);
+      if (!workspace) return;
+      dismissCenterSurfaces();
+      useProjectTabsStore.getState().openProject(workspace.path);
+      collapseSidebarOnMobile();
+    },
+    [workspaces, collapseSidebarOnMobile],
+  );
   // Sidebar 新建浏览器 nav entry: open a fresh browser tab in the center
   // strip. Other center surfaces step aside (same mutual exclusion as
   // handleTabSelect) — otherwise an active plugin hub/workbench keeps the
@@ -491,6 +507,7 @@ export function useChatSidebar({
     handleSetWorkspacePinned,
     handleNewSession,
     handleNewSessionInWorkspace,
+    handleOpenProject,
     handleNewBrowser,
     handleOpenPlugins,
     handleOpenMission,

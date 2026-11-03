@@ -144,6 +144,8 @@ export default function ChatPage() {
     activeBrowserId,
     pluginTabs,
     activePluginTabId,
+    projectTabs,
+    activeProjectPath,
     pluginHubOpen,
     pluginHubActive,
     missionOpen,
@@ -173,6 +175,7 @@ export default function ChatPage() {
     handleSetWorkspacePinned,
     handleNewSession,
     handleNewSessionInWorkspace,
+    handleOpenProject,
     handleNewBrowser,
     handleOpenPlugins,
     handleOpenMission,
@@ -248,6 +251,7 @@ export default function ChatPage() {
         onSetWorkspacePinned={handleSetWorkspacePinned}
         archivedRepos={archivedRepos}
         onNewSessionInWorkspace={handleNewSessionInWorkspace}
+        onOpenProject={handleOpenProject}
         onNewSession={handleNewSession}
         onNewBrowser={!isWeb && betaNewBrowser ? handleNewBrowser : undefined}
         onOpenPlugins={handleOpenPlugins}
@@ -328,6 +332,8 @@ export default function ChatPage() {
             activeBrowserId={activeBrowserId}
             pluginTabs={pluginTabs}
             activePluginTabId={activePluginTabId}
+            projectTabs={projectTabs}
+            activeProjectPath={activeProjectPath}
             pluginHubOpen={pluginHubOpen}
             pluginHubActive={pluginHubActive}
             missionOpen={missionOpen}

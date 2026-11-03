@@ -44,6 +44,7 @@ export function AiChatSidebar({
   activeThreadId,
   onThreadSelect,
   onNewSessionInWorkspace,
+  onOpenProject,
   onNewSession,
   onNewBrowser,
   onOpenPlugins,
@@ -92,6 +93,9 @@ export function AiChatSidebar({
   onDeleteWorktree?: (id: string) => void;
   /** Per-row + button: start a new chat in that workspace. */
   onNewSessionInWorkspace?: (id: string) => void;
+  /** Workspace row name: open that project's overview in the center area
+   *  (the caret beside the name still unfolds the session list). */
+  onOpenProject?: (id: string) => void;
   /** Commit of a drag-handle reorder (ordered workspace ids). */
   onReorderWorkspaces?: (orderedIds: string[]) => void;
   /** Workspace row dropped onto a section container: group id, the archived
@@ -193,6 +197,7 @@ export function AiChatSidebar({
             onAddWorkspace={onAddWorkspace}
             onRemoveWorkspace={onRemoveWorkspace}
             onNewSessionInWorkspace={onNewSessionInWorkspace}
+            onOpenProject={onOpenProject}
             onNewWorktree={onNewWorktree}
             onReorderWorkspaces={onReorderWorkspaces}
             onToggleGroup={toggleGroup}

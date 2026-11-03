@@ -13,6 +13,7 @@ import { creatorChatWorkspace, startCreatorChat } from "@/features/plugins/hub/c
 import { ReleaseNotesPane } from "@/features/update/ReleaseNotesPane";
 import { focusComposerWhenVisible } from "@/features/chat/focus-composer";
 import { SplitLayout } from "./split/SplitLayout";
+import { ProjectOverview } from "./ProjectOverview";
 import type { ActiveSession } from "./store";
 
 // CodeMirror + react-markdown are heavy; split them out of the startup chunk.
@@ -78,6 +79,7 @@ function centerSurfaces(input: {
   activeFilePath: string | null;
   activeBrowserId: string | null;
   activePluginTabId: string | null;
+  activeProjectPath: string | null;
   pluginHubActive: boolean;
   missionActive: boolean;
   notesActive: boolean;
@@ -87,6 +89,7 @@ function centerSurfaces(input: {
   editor: boolean;
   browser: boolean;
   plugin: boolean;
+  project: boolean;
   hub: boolean;
   mission: boolean;
   notes: boolean;
@@ -97,6 +100,7 @@ function centerSurfaces(input: {
       editor: false,
       browser: false,
       plugin: false,
+      project: false,
       hub: false,
       mission: false,
       notes: false,
@@ -104,6 +108,7 @@ function centerSurfaces(input: {
   }
   const browserInView = input.activeBrowserId !== null;
   const pluginInView = input.activePluginTabId !== null;
+  const projectInView = input.activeProjectPath !== null;
   const hubInView = input.pluginHubActive && !input.missionActive;
   const missionInView = input.missionActive;
   // 版本更新说明是最弱的单实例面：它由更新检查自动弹出，不该抢用户正在看的
@@ -115,6 +120,7 @@ function centerSurfaces(input: {
       input.activeFilePath ||
       browserInView ||
       pluginInView ||
+      projectInView ||
       hubInView ||
       missionInView ||
       notesInView
@@ -123,11 +129,13 @@ function centerSurfaces(input: {
       input.activeFilePath !== null &&
       !browserInView &&
       !pluginInView &&
+      !projectInView &&
       !hubInView &&
       !missionInView &&
       !notesInView,
     browser: browserInView && !missionInView && !hubInView && !notesInView,
     plugin: pluginInView && !missionInView && !hubInView && !notesInView,
+    project: projectInView && !missionInView && !hubInView && !notesInView,
     hub: hubInView,
     mission: missionInView,
     notes: notesInView,
@@ -148,6 +156,8 @@ export function ChatCenterPane({
   activeBrowserId,
   pluginTabs,
   activePluginTabId,
+  projectTabs,
+  activeProjectPath,
   pluginHubOpen,
   pluginHubActive,
   missionOpen,
@@ -172,6 +182,9 @@ export function ChatCenterPane({
    *  exclusive with the other surfaces; use-chat-tabs enforces it). */
   pluginTabs: string[];
   activePluginTabId: string | null;
+  /** Open project overview tabs (workspace paths) and the one in view. */
+  projectTabs: string[];
+  activeProjectPath: string | null;
   /** 原生插件中心页签（侧栏「插件」入口）：是否打开 / 是否在视。 */
   pluginHubOpen: boolean;
   pluginHubActive: boolean;
@@ -202,6 +215,7 @@ export function ChatCenterPane({
     activeFilePath,
     activeBrowserId,
     activePluginTabId,
+    activeProjectPath,
     pluginHubActive,
     missionActive,
     notesActive,
@@ -217,6 +231,18 @@ export function ChatCenterPane({
           startNewChat={startNewChat}
         />
       </Surface>
+
+      {/* Project overviews: one pane per open project tab, keep-alive like
+          the other surfaces so scroll position survives a switch. */}
+      {projectTabs.length > 0 && (
+        <Surface visible={surfaces.project}>
+          {projectTabs.map((path) => (
+            <SurfaceItem key={path} active={path === activeProjectPath}>
+              <ProjectOverview workspacePath={path} />
+            </SurfaceItem>
+          ))}
+        </Surface>
+      )}
 
       {openFiles.length > 0 && (
         <Surface visible={surfaces.editor}>

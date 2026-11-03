@@ -189,6 +189,7 @@ export function WorkspaceSection({
   onAddWorkspace,
   onRemoveWorkspace,
   onNewSessionInWorkspace,
+  onOpenProject,
   onNewWorktree,
   onReorderWorkspaces,
   onToggleGroup,
@@ -214,6 +215,8 @@ export function WorkspaceSection({
   onAddWorkspace?: () => void;
   onRemoveWorkspace?: (id: string) => void;
   onNewSessionInWorkspace?: (id: string) => void;
+  /** Workspace row name: open that project's overview in the center area. */
+  onOpenProject?: (id: string) => void;
   /** WORKTREES group ＋ / context-menu entry: open the create dialog. */
   onNewWorktree?: (workspaceId: string) => void;
   onReorderWorkspaces?: (orderedIds: string[]) => void;
@@ -282,6 +285,7 @@ export function WorkspaceSection({
             onThreadContextMenu={onThreadContextMenu}
             onRemove={onRemoveWorkspace}
             onNewSession={onNewSessionInWorkspace}
+            onOpenProject={onOpenProject}
             onNewWorktree={onNewWorktree}
             onRepoContextMenu={onRepoContextMenu}
             isRepoExpanded={isRepoExpanded}

@@ -5,6 +5,7 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import GitBranch from "lucide-react/dist/esm/icons/git-branch";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
+import FolderSymlink from "lucide-react/dist/esm/icons/folder-symlink";
 import Network from "lucide-react/dist/esm/icons/network";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import { BROWSER_TAB_PREFIX, useBrowserStore, type BrowserTab } from "@/features/browser/store";
@@ -18,6 +19,7 @@ import { PLUGIN_TAB_PREFIX, usePluginTabsStore } from "@/features/plugins/runtim
 import { RELEASE_NOTES_TAB_KEY, useReleaseNotesTabStore } from "@/features/update/notes-tab";
 import { fileName, useFilesStore } from "@/features/files/store";
 import { useGitStore, type DiffTarget } from "@/features/git/store";
+import { useProjectTabsStore, PROJECT_TAB_PREFIX } from "./store/project-tabs";
 import type { SessionMeta } from "@/lib/ipc";
 import { sessionKey, useChatStore, type ActiveSession } from "./store";
 import type { ChatPageDialog } from "./ChatPageDialogs";
@@ -65,6 +67,10 @@ export interface UseChatTabsResult {
   activeBrowserId: string | null;
   pluginTabs: string[];
   activePluginTabId: string | null;
+  /** Open project tabs (paths) and the one in view; the overview surface. */
+  projectTabs: string[];
+  activeProjectPath: string | null;
+  projectNames: Map<string, string>;
   pluginHubOpen: boolean;
   pluginHubActive: boolean;
   missionOpen: boolean;
@@ -133,6 +139,25 @@ export function useChatTabs({
       })),
     );
   const centerTabDefs = useRegistry(centerTabRegistry);
+  // Project overview tabs: one per workspace whose name was clicked. Labels
+  // come from the path, so the strip and the left panel agree on the name.
+  const {
+    projectTabs,
+    activeProjectPath,
+    activateProjectTab,
+    deactivateProjectTab,
+    closeProjectTab,
+    moveProjectTab,
+  } = useProjectTabsStore(
+    useShallow((s) => ({
+      projectTabs: s.tabs,
+      activeProjectPath: s.activePath,
+      activateProjectTab: s.activateProject,
+      deactivateProjectTab: s.deactivate,
+      closeProjectTab: s.closeProject,
+      moveProjectTab: s.moveProject,
+    })),
+  );
   // Browser tabs share the strip too; keyed by id behind BROWSER_TAB_PREFIX.
   const { browserTabs, activeBrowserId, activateBrowserTab, deactivateBrowserTab, closeBrowserTab, moveBrowserTab } =
     useBrowserStore(
@@ -219,6 +244,26 @@ export function useChatTabs({
     for (const s of sessions) map.set(`${s.engine}/${s.sessionId}`, s);
     return map;
   }, [sessions]);
+  // Project tab labels: the folder name, as the sidebar shows it.
+  const projectNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const path of projectTabs) {
+      const parts = path.split("/").filter(Boolean);
+      map.set(path, parts[parts.length - 1] ?? path);
+    }
+    return map;
+  }, [projectTabs]);
+  const projectTabItems = useMemo(
+    () =>
+      projectTabs.map((path) => ({
+        key: PROJECT_TAB_PREFIX + path,
+        label: projectNames.get(path) ?? path,
+        title: path,
+        icon: FolderSymlink,
+        streaming: false,
+      })),
+    [projectTabs, projectNames],
+  );
   const sessionTabItems = useMemo(
     () =>
       openTabs.map((tab, index) => {
@@ -343,6 +388,7 @@ export function useChatTabs({
     () => [
       ...sessionTabItems,
       ...fileTabItems,
+      ...projectTabItems,
       ...browserTabItems,
       ...pluginTabItems,
       ...hubTabItems,
@@ -360,12 +406,13 @@ export function useChatTabs({
           ]
         : []),
     ],
-    [sessionTabItems, fileTabItems, browserTabItems, pluginTabItems, hubTabItems, missionTabItems, notesTabItems, diffView],
+    [sessionTabItems, fileTabItems, projectTabItems, browserTabItems, pluginTabItems, hubTabItems, missionTabItems, notesTabItems, diffView],
   );
   const activeTabKey = activeCenterTabKey({
     diffView,
     activeBrowserId: visibleActiveBrowserId,
     activePluginTabId,
+    activeProjectPath,
     hubActive,
     missionActive: visibleMissionActive,
     notesActive,
@@ -407,6 +454,11 @@ export function useChatTabs({
     deactivatePluginTab,
     closePluginTab,
     movePluginTab,
+    projectTabs,
+    activateProjectTab,
+    deactivateProjectTab,
+    closeProjectTab,
+    moveProjectTab,
   });
 
   return {
@@ -431,6 +483,9 @@ export function useChatTabs({
     activeBrowserId: visibleActiveBrowserId,
     pluginTabs,
     activePluginTabId,
+    projectTabs,
+    activeProjectPath,
+    projectNames,
     pluginHubOpen: hubOpen,
     pluginHubActive: hubActive,
     missionOpen: visibleMissionOpen,
@@ -455,11 +510,20 @@ interface SessionTabItem {
 
 /** Tab-kind routing shared by select/close/reorder: keys carry a prefix so
  *  each kind lands in its own store. */
-type TabKind = "session" | "file" | "browser" | "plugin" | "hub" | "mission" | "notes";
+type TabKind =
+  | "session"
+  | "file"
+  | "browser"
+  | "plugin"
+  | "project"
+  | "hub"
+  | "mission"
+  | "notes";
 
 function tabKindOf(key: string): TabKind {
   if (key.startsWith(BROWSER_TAB_PREFIX)) return "browser";
   if (key.startsWith(PLUGIN_TAB_PREFIX)) return "plugin";
+  if (key.startsWith(PROJECT_TAB_PREFIX)) return "project";
   if (key === PLUGIN_HUB_TAB_KEY) return "hub";
   if (key === MISSION_WORKBENCH_TAB_KEY) return "mission";
   if (key === RELEASE_NOTES_TAB_KEY) return "notes";
@@ -475,6 +539,7 @@ function activeCenterTabKey({
   diffView,
   activeBrowserId,
   activePluginTabId,
+  activeProjectPath,
   hubActive,
   missionActive,
   notesActive,
@@ -484,6 +549,7 @@ function activeCenterTabKey({
   diffView: unknown;
   activeBrowserId: string | null;
   activePluginTabId: string | null;
+  activeProjectPath: string | null;
   hubActive: boolean;
   missionActive: boolean;
   notesActive: boolean;
@@ -493,6 +559,7 @@ function activeCenterTabKey({
   if (diffView) return DIFF_TAB_KEY;
   if (activeBrowserId) return BROWSER_TAB_PREFIX + activeBrowserId;
   if (activePluginTabId) return PLUGIN_TAB_PREFIX + activePluginTabId;
+  if (activeProjectPath) return PROJECT_TAB_PREFIX + activeProjectPath;
   if (hubActive) return PLUGIN_HUB_TAB_KEY;
   if (missionActive) return MISSION_WORKBENCH_TAB_KEY;
   if (notesActive) return RELEASE_NOTES_TAB_KEY;
@@ -539,6 +606,12 @@ interface ChatTabHandlerDeps {
   deactivatePluginTab: () => void;
   closePluginTab: (id: string) => void;
   movePluginTab: (id: string, toIndex: number) => void;
+  // Project tabs (project tabs store).
+  projectTabs: string[];
+  activateProjectTab: (path: string) => void;
+  deactivateProjectTab: () => void;
+  closeProjectTab: (path: string) => void;
+  moveProjectTab: (path: string, toIndex: number) => void;
 }
 
 /** Select/close/reorder/close-all/close-inactive for the center tab strip.
@@ -572,6 +645,11 @@ function useChatTabHandlers({
   deactivatePluginTab,
   closePluginTab,
   movePluginTab,
+  projectTabs,
+  activateProjectTab,
+  deactivateProjectTab,
+  closeProjectTab,
+  moveProjectTab,
 }: ChatTabHandlerDeps) {
   const handleTabSelect = useCallback(
     (tabKey: string) => {
@@ -584,6 +662,7 @@ function useChatTabHandlers({
         clearActiveFile();
         deactivateBrowserTab();
         deactivatePluginTab();
+        deactivateProjectTab();
         useMissionStore.getState().deactivate();
         useReleaseNotesTabStore.getState().deactivate();
         usePluginHubStore.getState().activate();
@@ -593,6 +672,7 @@ function useChatTabHandlers({
         clearActiveFile();
         deactivateBrowserTab();
         deactivatePluginTab();
+        deactivateProjectTab();
         usePluginHubStore.getState().deactivate();
         useReleaseNotesTabStore.getState().deactivate();
         useMissionStore.getState().activate();
@@ -602,6 +682,7 @@ function useChatTabHandlers({
         clearActiveFile();
         deactivateBrowserTab();
         deactivatePluginTab();
+        deactivateProjectTab();
         usePluginHubStore.getState().deactivate();
         useMissionStore.getState().deactivate();
         useReleaseNotesTabStore.getState().activate();
@@ -613,16 +694,24 @@ function useChatTabHandlers({
       if (kind === "browser") {
         clearActiveFile();
         deactivatePluginTab();
+        deactivateProjectTab();
         activateBrowserTab(tabKey.slice(BROWSER_TAB_PREFIX.length));
         return;
       }
       deactivateBrowserTab();
       if (kind === "plugin") {
         clearActiveFile();
+        deactivateProjectTab();
         activatePluginTab(tabKey.slice(PLUGIN_TAB_PREFIX.length));
         return;
       }
       deactivatePluginTab();
+      if (kind === "project") {
+        clearActiveFile();
+        activateProjectTab(tabKey.slice(PROJECT_TAB_PREFIX.length));
+        return;
+      }
+      deactivateProjectTab();
       if (kind === "file") {
         activateFile(tabKey.slice(FILE_TAB_PREFIX.length));
         return;
@@ -631,7 +720,7 @@ function useChatTabHandlers({
       const item = sessionTabItems.find((i) => i.key === tabKey);
       if (item) focusTab(item.tab.engine, item.tab.sessionId, item.tab.workspacePath);
     },
-    [sessionTabItems, focusTab, activateFile, clearActiveFile, closeDiff, activateBrowserTab, deactivateBrowserTab, activatePluginTab, deactivatePluginTab],
+    [sessionTabItems, focusTab, activateFile, clearActiveFile, closeDiff, activateBrowserTab, deactivateBrowserTab, activatePluginTab, deactivatePluginTab, activateProjectTab, deactivateProjectTab],
   );
   const handleTabClose = useCallback(
     (tabKey: string) => {
@@ -660,6 +749,10 @@ function useChatTabHandlers({
         closePluginTab(tabKey.slice(PLUGIN_TAB_PREFIX.length));
         return;
       }
+      if (kind === "project") {
+        closeProjectTab(tabKey.slice(PROJECT_TAB_PREFIX.length));
+        return;
+      }
       if (kind === "file") {
         const path = tabKey.slice(FILE_TAB_PREFIX.length);
         if (dirtyPaths[path]) setDialog({ kind: "closeFile", path });
@@ -669,7 +762,7 @@ function useChatTabHandlers({
       const item = sessionTabItems.find((i) => i.key === tabKey);
       if (item) closeTab(item.tab.engine, item.tab.sessionId, item.tab.workspacePath);
     },
-    [sessionTabItems, closeTab, closeFile, dirtyPaths, closeDiff, setDialog, closeBrowserTab, closePluginTab],
+    [sessionTabItems, closeTab, closeFile, dirtyPaths, closeDiff, setDialog, closeBrowserTab, closePluginTab, closeProjectTab],
   );
   // Drag-reorder stays within each tab-kind group (sessions, files,
   // browsers each reorder in their own store); cross-group drops are
@@ -697,6 +790,14 @@ function useChatTabHandlers({
         movePluginTab(draggedId, dropTargetIndex(from, target, before));
         return;
       }
+      if (kind === "project") {
+        const draggedPath = draggedKey.slice(PROJECT_TAB_PREFIX.length);
+        const targetPath = targetKey.slice(PROJECT_TAB_PREFIX.length);
+        const from = projectTabs.indexOf(draggedPath);
+        const target = projectTabs.indexOf(targetPath);
+        moveProjectTab(draggedPath, dropTargetIndex(from, target, before));
+        return;
+      }
       if (kind === "file") {
         const draggedPath = draggedKey.slice(FILE_TAB_PREFIX.length);
         const targetPath = targetKey.slice(FILE_TAB_PREFIX.length);
@@ -711,7 +812,7 @@ function useChatTabHandlers({
       if (!dragged || target < 0) return;
       moveTab(dragged.engine, dragged.sessionId, dragged.workspacePath, dropTargetIndex(from, target, before));
     },
-    [openFiles, moveOpenFile, sessionTabItems, moveTab, browserTabs, moveBrowserTab, pluginTabs, movePluginTab],
+    [openFiles, moveOpenFile, sessionTabItems, moveTab, browserTabs, moveBrowserTab, pluginTabs, movePluginTab, projectTabs, moveProjectTab],
   );
 
   // Close a specific list of tab keys with the unified invariant:
@@ -741,6 +842,9 @@ function useChatTabHandlers({
           closePluginTab(id);
         }
       }
+      for (const path of projectTabs) {
+        if (keysSet.has(PROJECT_TAB_PREFIX + path)) closeProjectTab(path);
+      }
       const matchingFiles = openFiles.filter((path) => keysSet.has(FILE_TAB_PREFIX + path));
       const dirty = matchingFiles.filter((path) => dirtyPaths[path]);
       for (const path of matchingFiles) {
@@ -756,6 +860,8 @@ function useChatTabHandlers({
       closeBrowserTab,
       pluginTabs,
       closePluginTab,
+      projectTabs,
+      closeProjectTab,
       openFiles,
       dirtyPaths,
       closeFile,

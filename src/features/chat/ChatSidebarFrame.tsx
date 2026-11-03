@@ -34,6 +34,7 @@ export function ChatSidebarFrame({
   onNewWorktree,
   onDeleteWorktree,
   onNewSessionInWorkspace,
+  onOpenProject,
   onNewSession,
   onNewBrowser,
   onOpenPlugins,
@@ -67,6 +68,8 @@ export function ChatSidebarFrame({
   /** worktree 子行右键菜单：打开删除确认。 */
   onDeleteWorktree: (workspaceId: string) => void;
   onNewSessionInWorkspace: (workspaceId: string) => void;
+  /** Workspace row name: open the project overview in the center area. */
+  onOpenProject: (workspaceId: string) => void;
   onNewSession: () => void;
   /** 新建浏览器 nav entry (desktop only; omitted in web-access mode). */
   onNewBrowser?: () => void;
@@ -116,6 +119,7 @@ export function ChatSidebarFrame({
         onDeleteWorktree={onDeleteWorktree}
         archivedRepos={archivedRepos}
         onNewSessionInWorkspace={onNewSessionInWorkspace}
+        onOpenProject={onOpenProject}
         onNewSession={onNewSession}
         onNewBrowser={onNewBrowser}
         onOpenPlugins={onOpenPlugins}

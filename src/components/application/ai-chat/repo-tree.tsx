@@ -294,6 +294,7 @@ function RepoHeaderRow({
   dragDownPos,
   onToggleOpen,
   onNewSession,
+  onOpenProject,
   onRemove,
   onContextMenu,
 }: {
@@ -308,6 +309,9 @@ function RepoHeaderRow({
   dragDownPos: { current: { x: number; y: number } | null };
   onToggleOpen: () => void;
   onNewSession?: (id: string) => void;
+  /** Row name click: open the project overview in the center area. Falls back
+   *  to the row's own toggle when the host has no overview for it. */
+  onOpenProject?: (id: string) => void;
   onRemove?: (id: string) => void;
   onContextMenu?: (event: ReactMouseEvent<HTMLElement>) => void;
 }) {
@@ -373,12 +377,18 @@ function RepoHeaderRow({
           </span>
         )}
       </button>
-      {/* Row body toggles as its own button, keeping the folder/drag handle
-          and hover actions as sibling controls instead of nested ones. */}
+      {/* Row body is its own button, keeping the folder/drag handle and hover
+          actions as sibling controls instead of nested ones. The name opens
+          the project overview (our addition) — the avatar button on the left
+          stays the fold control, so "look at the project" and "unfold its
+          sessions" are two separate gestures and neither loses its place. */}
       <button
         type="button"
         aria-expanded={expanded}
-        onClick={onToggleOpen}
+        onClick={() => {
+          if (onOpenProject && repo.id) onOpenProject(repo.id);
+          else onToggleOpen();
+        }}
         className="flex min-w-0 flex-1 cursor-pointer items-center text-left"
       >
         <ThreadStatusDot streaming={running} retrying={retrying} unseen={false} />
@@ -870,6 +880,7 @@ export function RepoItem({
   onThreadContextMenu,
   onRemove,
   onNewSession,
+  onOpenProject,
   onContextMenu,
   onRepoContextMenu,
   onNewWorktree,
@@ -890,6 +901,8 @@ export function RepoItem({
   onRemove?: (id: string) => void;
   /** Per-row + button: start a new chat in this workspace. */
   onNewSession?: (id: string) => void;
+  /** Row name click: open the project overview in the center area. */
+  onOpenProject?: (id: string) => void;
   /** Right-click on the repo header row: opens the workspace menu. */
   onContextMenu?: (event: ReactMouseEvent<HTMLElement>) => void;
   /** Right-click on a worktree child row: same menu, worktree entries. */
@@ -922,6 +935,7 @@ export function RepoItem({
         dragDownPos={dragDownPos}
         onToggleOpen={toggleOpen}
         onNewSession={onNewSession}
+        onOpenProject={onOpenProject}
         onRemove={onRemove}
         onContextMenu={onContextMenu}
       />
