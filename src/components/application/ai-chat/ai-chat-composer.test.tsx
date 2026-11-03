@@ -272,8 +272,31 @@ describe("代理快捷开关文案", () => {
     const glyph = container.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
     expect(glyph).not.toBeNull();
     expect(glyph!.getAttribute("aria-label")).toBe("本项目内思考与工具调用保持折叠");
+    // Состояние должно быть видно глазом: другой значок и другие чернила.
+    // (В клубной палитре text-secondary и foreground-icon-tertiary совпадают,
+    // поэтому первая версия не различала положения вовсе.)
+    expect(glyph!.querySelector("svg.lucide-list-collapse")).not.toBeNull();
+    expect(glyph!.className).toContain("text-text-primary");
     await act(async () => glyph!.click());
     expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("снятая свёрнутость показана другим значком и приглушённым цветом", async () => {
+    vi.spyOn(ipc, "getAppSettings").mockResolvedValue({} as AppSettings);
+    await act(async () => {
+      root.render(
+        <HashRouter>
+          <StatusBar processCollapsed={false} onToggleProcessCollapse={() => {}} />
+        </HashRouter>,
+      );
+    });
+    const glyph = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="本项目内思考与工具调用边运行边展开"]',
+    );
+    expect(glyph).not.toBeNull();
+    expect(glyph!.getAttribute("aria-pressed")).toBe("false");
+    expect(glyph!.querySelector("svg.lucide-list-tree")).not.toBeNull();
+    expect(glyph!.className).toContain("text-foreground-icon-tertiary");
   });
 
   it("没有工作区时不出现折叠开关", async () => {

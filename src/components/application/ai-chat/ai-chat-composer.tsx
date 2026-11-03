@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import GitMerge from "lucide-react/dist/esm/icons/git-merge";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import ListCollapse from "lucide-react/dist/esm/icons/list-collapse";
+import ListTree from "lucide-react/dist/esm/icons/list-tree";
 import {
   Button as AriaButton,
   Dialog as AriaDialog,
@@ -454,9 +455,11 @@ function ProxyQuickToggle() {
 }
 
 /** Process-fold glyph: keeps this workspace's thinking and tool-call runs
- *  folded while the agent works. Dim is the folded default; the lighter grey
- *  marks the workspace where runs open as they arrive. Same bare-button shape
- *  as the proxy glyph beside it. */
+ *  folded while the agent works. The two positions must be told apart at a
+ *  glance — the glyph changes (folded: lines collapsing, open: the steps as a
+ *  tree) and so does the colour: club ink when folded, the muted grey when the
+ *  runs open as they arrive. Both come from app tokens, because the club
+ *  palette is what is on screen here. */
 function ProcessCollapseToggle({
   collapsed,
   onToggle,
@@ -478,10 +481,14 @@ function ProcessCollapseToggle({
         onPress={onToggle}
         className={cx(
           "flex cursor-pointer items-center rounded-full p-1.5 outline-none transition-colors duration-150 ease focus-visible:ring-2 focus-visible:ring-border-focus-ring",
-          collapsed ? "text-foreground-icon-tertiary" : "text-text-secondary",
+          collapsed ? "text-text-primary" : "text-foreground-icon-tertiary",
         )}
       >
-        <ListCollapse className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+        {collapsed ? (
+          <ListCollapse className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+        ) : (
+          <ListTree className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+        )}
       </AriaButton>
       <TooltipContent>
         {t(collapsed ? "chat.processFoldTipOn" : "chat.processFoldTipOff")}
