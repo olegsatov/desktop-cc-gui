@@ -134,9 +134,10 @@ export const en: Messages = {
     addWorkspaceHint: "Add workspace (you can select several folders at once)",
     removeWorkspace: "Remove workspace",
     newGroup: "New group",
-    inputPlaceholder: "Type a message. Enter to send, Shift+Enter for newline, or @ to reference, # for agents",
-    inputPlaceholderCmdEnter: "Type a message. Cmd+Enter to send, or @ to reference, # for agents",
-    inputPlaceholderCmdEnterCtrl: "Type a message. Ctrl+Enter to send, or @ to reference, # for agents",
+    // local: пустое поле ввода без подсказки — владелец попросил убрать текст
+    inputPlaceholder: "",
+    inputPlaceholderCmdEnter: "",
+    inputPlaceholderCmdEnterCtrl: "",
     mentionFiles: "Select a file",
     mentionIndexing: "Indexing files…",
     mentionNoMatches: "No matching files",

@@ -130,9 +130,10 @@ export const zh = {
     addWorkspaceHint: "添加工作区（可一次多选多个文件夹）",
     removeWorkspace: "移除工作区",
     newGroup: "新建分组",
-    inputPlaceholder: "输入消息，Enter 发送，Shift+Enter 换行，或 @引用、#智能体",
-    inputPlaceholderCmdEnter: "输入消息，Cmd+Enter 发送，或 @引用、#智能体",
-    inputPlaceholderCmdEnterCtrl: "输入消息，Ctrl+Enter 发送，或 @引用、#智能体",
+    // 本地修改：输入框不再显示提示文字
+    inputPlaceholder: "",
+    inputPlaceholderCmdEnter: "",
+    inputPlaceholderCmdEnterCtrl: "",
     mentionFiles: "选择文件",
     mentionIndexing: "正在索引文件…",
     mentionNoMatches: "没有匹配的文件",

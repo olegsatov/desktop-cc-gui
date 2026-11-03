@@ -126,9 +126,10 @@ export const ko: Messages = {
     addWorkspaceHint: "작업공간 추가 (여러 폴더를 한 번에 선택할 수 있음)",
     removeWorkspace: "작업공간 제거",
     newGroup: "새 그룹",
-    inputPlaceholder: "메시지를 입력하세요. Enter로 보내기, Shift+Enter로 줄바꿈, @로 참조, #으로 에이전트 선택",
-    inputPlaceholderCmdEnter: "메시지를 입력하세요. Cmd+Enter로 보내기, @로 참조, #으로 에이전트 선택",
-    inputPlaceholderCmdEnterCtrl: "메시지를 입력하세요. Ctrl+Enter로 보내기, @로 참조, #으로 에이전트 선택",
+    // 로컬 수정: 입력 필드에 안내 문구를 표시하지 않음
+    inputPlaceholder: "",
+    inputPlaceholderCmdEnter: "",
+    inputPlaceholderCmdEnterCtrl: "",
     mentionFiles: "파일 선택",
     mentionIndexing: "파일 색인 중…",
     mentionNoMatches: "일치하는 파일 없음",
