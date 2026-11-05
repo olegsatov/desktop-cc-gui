@@ -12,6 +12,7 @@
     "core:window:allow-close",
     "core:window:allow-set-focus",
     "core:window:allow-unminimize",
+    "core:window:allow-set-badge-count",
     "core:webview:allow-set-webview-zoom",
     {
       "identifier": "opener:allow-open-url",

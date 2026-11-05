@@ -8,6 +8,7 @@ import { applyFontPreferences, readCachedFontPreferences } from "./features/sett
 import { hydrateBetaFeatures } from "./features/settings/beta-features";
 import { hydrateFileTreePreferences } from "./features/files/tree-preferences";
 import { initializePerformancePreference } from "./lib/performance-preference";
+import { initDockBadge } from "./lib/dock-badge";
 import { sessionKey, useChatStore } from "./features/chat/store";
 import { getAppVersion } from "./lib/platform";
 import { installTauriUnlistenGuard } from "./lib/tauri-unlisten-guard";
@@ -60,6 +61,11 @@ export function startApp() {
   // running version. The boundary below renders what these record.
   installGlobalCrashHandlers();
   void getAppVersion().then(setCrashAppVersion);
+
+  // The number of sessions waiting for the user, on the app icon in the Dock
+  // (our patch). Session states are store state, so it starts here and then
+  // follows every write.
+  initDockBadge();
 
   // Apply the locally cached theme synchronously, before first paint, so the
   // window never flashes the wrong color scheme while settings load.
