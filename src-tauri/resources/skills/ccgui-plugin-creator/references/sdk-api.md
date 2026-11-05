@@ -239,7 +239,7 @@ ui: {
   /** 权限：ui:composer-status */
   registerComposerSlot(def: { slot: ComposerSlotId; key?: string; component: ComponentType; order?: number }): Disposer;
   /** 权限：ui:panel-tab */
-  registerPanelTab(def: { key?: string; label(): string; icon?: ComponentType<{ className?: string }>; component: ComponentType<{ workspacePath: string }>; order?: number }): Disposer;
+  registerPanelTab(def: { key?: string; label(): string; icon?: ComponentType<{ className?: string }>; component: ComponentType<{ workspacePath: string }>; order?: number; stack?: string }): Disposer;
   /** 权限：ui:status-bar */
   registerStatusBarItem(def: { key?: string; component: ComponentType; order?: number; zone?: "start" | "end" }): Disposer;
   /** 权限：ui:composer-status */
@@ -503,6 +503,7 @@ ctx.react: typeof React; // Shared host React instance: external bundles can't r
 | `theme` | `ctx.theme.injectCss`、`ctx.theme.setTokens` |
 | `i18n` | `ctx.i18n.addBundle` |
 | `events` | `ctx.events.on`、`ctx.events.emit` |
+| `notify` | — |
 | `network:none` | — |
 | `composer:draft` | `ctx.composer.setDraft` |
 | `host:session` | `ctx.sessions.selectSession`、`ctx.sessions.refresh`、`ctx.sessions.setEffort`、`ctx.sessions.startRun`、`ctx.sessions.interruptRun`、`ctx.sessions.registerSource` |
@@ -535,3 +536,4 @@ ctx.react: typeof React; // Shared host React instance: external bundles can't r
 | `plugin_exec_run`、`plugin_exec_spawn` | `exec:<bin>` 授权 |
 | `plugin_exec_kill` | 任意 `exec:` 授权 |
 | `plugin_agent_start`、`plugin_agent_interrupt` | `agent` |
+| `plugin_notify` | `notify` |
