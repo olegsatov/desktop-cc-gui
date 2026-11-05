@@ -7,7 +7,10 @@ const h = vi.hoisted(() => ({
   win: {
     label: "main",
     setBadgeCount: vi.fn(async () => {}),
+    isFocused: vi.fn(async () => true),
+    onFocusChanged: vi.fn(),
   },
+  focusHandlers: [] as Array<(event: { payload: boolean }) => void>,
   listeners: [] as Array<(state: ChatStore) => void>,
   state: {} as ChatStore,
 }));
@@ -40,11 +43,25 @@ function storeState(patch: Partial<ChatStore> = {}): ChatStore {
   return { waitingByKey: {}, streamingByKey: {}, unseen: {}, ...patch } as unknown as ChatStore;
 }
 
+/** Let the focus setup (async IPC) settle. */
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+/** The app window loses or regains the focus. */
+function focus(next: boolean) {
+  for (const handler of h.focusHandlers) handler({ payload: next });
+}
+
 describe("dock badge", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.listeners.length = 0;
+    h.focusHandlers.length = 0;
     h.win.label = "main";
+    h.win.isFocused.mockResolvedValue(true);
+    h.win.onFocusChanged.mockImplementation(async (handler: (event: { payload: boolean }) => void) => {
+      h.focusHandlers.push(handler);
+      return () => {};
+    });
     h.state = storeState();
     resetDockBadgeForTests();
   });
@@ -135,5 +152,65 @@ describe("dock badge", () => {
     pushDockBadge(2);
     expect(h.win.setBadgeCount).toHaveBeenCalledTimes(2);
     warn.mockRestore();
+  });
+
+  it("counts a turn that ended while the user was in another program", async () => {
+    h.state = storeState({ streamingByKey: { "pi/s1": true } });
+    initDockBadge();
+    await flush();
+    expect(h.win.setBadgeCount).toHaveBeenLastCalledWith();
+
+    // The user switches to another application: the session sits in the open
+    // tab, so the app itself flags nothing at all.
+    focus(false);
+
+    // …and the answer arrives. That is what the badge is for.
+    updateDockBadge(storeState());
+    expect(h.win.setBadgeCount).toHaveBeenLastCalledWith(1);
+
+    // Back at the app: seen, the number goes away.
+    focus(true);
+    expect(h.win.setBadgeCount).toHaveBeenLastCalledWith();
+  });
+
+  it("ignores a turn that ended in the open window", async () => {
+    h.state = storeState({ streamingByKey: { "pi/s1": true } });
+    initDockBadge();
+    await flush();
+    // Only the startup "no badge" push has happened so far.
+    h.win.setBadgeCount.mockClear();
+
+    updateDockBadge(storeState());
+    expect(h.win.setBadgeCount).not.toHaveBeenCalled();
+  });
+
+  it("counts a session that finished while the app was in the background at start", async () => {
+    // Launched behind another window: the listener alone would never say so.
+    h.win.isFocused.mockResolvedValue(false);
+    h.state = storeState({ streamingByKey: { "pi/s7": true } });
+    initDockBadge();
+    await flush();
+
+    updateDockBadge(storeState());
+    expect(h.win.setBadgeCount).toHaveBeenLastCalledWith(1);
+  });
+
+  it("never counts the same session twice, whatever mix of states it has", async () => {
+    h.state = storeState({ streamingByKey: { "pi/s1": true } });
+    initDockBadge();
+    await flush();
+    focus(false);
+    updateDockBadge(storeState({ unseen: { "pi/s1": true } }));
+
+    expect(h.win.setBadgeCount).toHaveBeenLastCalledWith(1);
+  });
+
+  it("keeps working when the window cannot report its focus", async () => {
+    h.win.onFocusChanged.mockRejectedValueOnce(new Error("no permission"));
+    h.win.isFocused.mockRejectedValueOnce(new Error("no permission"));
+    h.state = storeState({ unseen: { "pi/s1": true } });
+    initDockBadge();
+    await flush();
+    expect(h.win.setBadgeCount).toHaveBeenLastCalledWith(1);
   });
 });
