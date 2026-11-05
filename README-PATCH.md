@@ -1,7 +1,7 @@
 # CC GUI с правкой: отправка мимо очереди
 
 Это копия исходников CC GUI (ветка `local/cmd-enter-send-now`, стоит на теге
-автора `v1.2.0`) со своими правками. Собранное приложение лежит здесь:
+автора `v1.2.1`) со своими правками. Собранное приложение лежит здесь:
 
 ```
 src-tauri/target/release/bundle/macos/CC GUI.app
@@ -182,16 +182,15 @@ src-tauri/target/release/bundle/macos/CC GUI.app
 cd ~/Coding/ccgui-clean-ui/ccgui-patched
 git fetch --tags upstream
 pnpm install                        # автор добавляет зависимости — без этого падают проверки и сборка
-git rebase --onto refs/tags/<новый-тег> refs/heads/v1.1.9 local/cmd-enter-send-now
+git rebase --onto refs/tags/<новый-тег> refs/tags/v1.2.1 local/cmd-enter-send-now
 ./build-patched.sh
 git push --force-with-lease origin local/cmd-enter-send-now
 ```
 
-База — ветка автора `refs/heads/v1.1.9`, а не тег с тем же именем (тег — merge
-коммит поверх неё). Последний перенос, 01.11.2026 на `v1.2.0`, дал конфликты в
-семи местах — все от того, что автор дописал код рядом или переписал тот же
-участок: разводятся сохранением обоих кусков, разбор в памяти проекта
-(`.operator/specs/ccgui-host-patch.md`).
+Базу берут у git: `git merge-base refs/tags/<новый тег> HEAD`. Последний перенос,
+05.11.2026 на `v1.2.1`, дал конфликты в трёх местах — все от того, что автор
+дописал код рядом с нашим: разводятся сохранением обоих кусков, разбор в памяти
+проекта (`.operator/specs/ccgui-host-patch.md`).
 
 Правки — отдельные коммиты по темам (`git log --oneline` в этой папке): ввод
 текста и отправка, красная точка «сессия ждёт человека», сессии плагинов вне
