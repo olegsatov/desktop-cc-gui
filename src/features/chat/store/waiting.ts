@@ -42,8 +42,11 @@ export function waitingPatch(
   messages: Message[],
 ): Partial<ChatStore> {
   const waiting = hasPendingAsk(messages);
-  if ((s.waitingByKey[key] === true) === waiting) return {};
-  const next = { ...s.waitingByKey };
+  // Часть тестов приложения собирает состояние без наших полей: нет карты —
+  // значит, ничего и не ждёт.
+  const known = s.waitingByKey ?? {};
+  if ((known[key] === true) === waiting) return {};
+  const next = { ...known };
   if (waiting) next[key] = true;
   else delete next[key];
   return { waitingByKey: next };
